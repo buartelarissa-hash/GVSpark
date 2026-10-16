@@ -1,0 +1,993 @@
+// GV SPARK — modelo de dados
+//
+// O schema contempla o domínio completo planejado (Fases 1 a 6) para validar a
+// arquitetura desde o início. As fases seguintes podem refiná-lo via migrations.
+//
+// Convenções:
+// - IDs em cuid().
+// - `isDemo = true` identifica registros criados pelo seed de desenvolvimento.
+// - Nada de exclusão física em dados acadêmicos: tentativas, notas e ajustes são
+//   sempre preservados (regra de negócio obrigatória).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// FASE 1 — Identidade, acesso e estrutura organizacional
+// ============================================================================
+
+enum Role {
+  ADMIN // Administrador geral
+  GESTOR // Gestor
+  INSTRUTOR // Instrutor
+  COLABORADOR // Colaborador
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model User {
+  id                 String     @id @default(cuid())
+  name               String
+  email              String     @unique
+  passwordHash       String
+  role               Role       @default(COLABORADOR)
+  status             UserStatus @default(ACTIVE)
+  avatarUrl          String?
+  phone              String?
+  registration       String?    @unique // matrícula
+  admissionDate      DateTime?  @db.Date
+  mustChangePassword Boolean    @default(false)
+  lastLoginAt        DateTime?
+  isDemo             Boolean    @default(false)
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
+
+  departmentId String?
+  department   Department? @relation("DepartmentMembers", fields: [departmentId], references: [id], onDelete: SetNull)
+  positionId   String?
+  position     Position?   @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  managerId    String?
+  manager      User?       @relation("ManagerReports", fields: [managerId], references: [id], onDelete: SetNull)
+  reports      User[]      @relation("ManagerReports")
+
+  sessions         Session[]
+  auditLogs        AuditLog[]
+  headOfDepartment Department[]         @relation("DepartmentHead")
+  orgPositions     OrgPosition[]
+  announcements    Announcement[]
+  onboarding       OnboardingProgress[]
+
+  instructedCourses Course[]           @relation("CourseInstructor")
+  createdCourses    Course[]           @relation("CourseCreator")
+  enrollments       Enrollment[]
+  lessonProgress    LessonProgress[]
+  uploadedFiles     FileAsset[]
+  assignmentsMade   CourseAssignment[] @relation("AssignmentAuthor")
+  assignedCourses   CourseAssignment[] @relation("AssignmentTarget")
+
+  createdQuestions Question[]
+  attempts         AssessmentAttempt[]   @relation("AttemptUser")
+  gradedAttempts   AssessmentAttempt[]   @relation("AttemptGrader")
+  releasedAttempts AssessmentAttempt[]   @relation("AttemptReleaser")
+  gradedAnswers    AttemptAnswer[]
+  scoreAdjustments ScoreAdjustment[]
+  retakesReceived  RetakeAuthorization[] @relation("RetakeUser")
+  retakesGranted   RetakeAuthorization[] @relation("RetakeAuthor")
+  certificates     Certificate[]
+
+  careerEvents        CareerEvent[]     @relation("CareerEventUser")
+  careerEventsCreated CareerEvent[]     @relation("CareerEventAuthor")
+  feedbacksReceived   Feedback[]        @relation("FeedbackUser")
+  feedbacksGiven      Feedback[]        @relation("FeedbackAuthor")
+  developmentPlans    DevelopmentPlan[]
+  competencies        UserCompetency[]
+  indicatorResults    IndicatorResult[] @relation("IndicatorResultUser")
+  indicatorUpdates    IndicatorResult[] @relation("IndicatorResultAuthor")
+  badges              UserBadge[]       @relation("BadgeUser")
+  badgesAwarded       UserBadge[]       @relation("BadgeAuthor")
+  inquiries           Inquiry[]         @relation("InquiryAuthor")
+  inquiriesAssigned   Inquiry[]         @relation("InquiryAssignee")
+  inquiryMessages     InquiryMessage[]
+
+  @@index([departmentId])
+  @@index([positionId])
+  @@index([managerId])
+  @@index([status])
+}
+
+model Session {
+  id         String   @id @default(cuid())
+  tokenHash  String   @unique // SHA-256 do token; o token em texto puro fica só no cookie
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt  DateTime
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+  lastSeenAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  ip        String?
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([ip, createdAt])
+}
+
+model Department {
+  id          String       @id @default(cuid())
+  name        String       @unique
+  description String?
+  active      Boolean      @default(true)
+  isDemo      Boolean      @default(false)
+  parentId    String?
+  parent      Department?  @relation("DepartmentTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children    Department[] @relation("DepartmentTree")
+  headId      String?
+  head        User?        @relation("DepartmentHead", fields: [headId], references: [id], onDelete: SetNull)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  members           User[]             @relation("DepartmentMembers")
+  positions         Position[]
+  orgPositions      OrgPosition[]
+  courseAssignments CourseAssignment[]
+  indicators        Indicator[]
+}
+
+// Cargo
+model Position {
+  id           String      @id @default(cuid())
+  title        String
+  description  String?
+  active       Boolean     @default(true)
+  isDemo       Boolean     @default(false)
+  departmentId String?
+  department   Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  users             User[]
+  onboardingTracks  OnboardingTrack[]
+  learningPaths     LearningPath[]
+  courseAssignments CourseAssignment[]
+  careerEvents      CareerEvent[]
+  indicators        Indicator[]
+
+  @@unique([title, departmentId])
+}
+
+// Registro de ações administrativas relevantes (auditoria / LGPD)
+model AuditLog {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action    String // ex.: "user.create", "attempt.release"
+  entity    String // ex.: "User", "AssessmentAttempt"
+  entityId  String?
+  metadata  Json?
+  ip        String?
+  createdAt DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([actorId])
+  @@index([createdAt])
+}
+
+// Configurações gerais (identidade visual, retenção de dados, etc.)
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+// ============================================================================
+// FASE 2 — Integração, história e organograma
+// ============================================================================
+
+enum CompanySectionType {
+  HISTORY
+  FOUNDERS
+  MISSION
+  VISION
+  VALUES
+  PURPOSE
+  CULTURE
+  VIDEO
+}
+
+model CompanySection {
+  id        String             @id @default(cuid())
+  type      CompanySectionType
+  title     String
+  body      Json? // documento TipTap
+  mediaUrl  String?
+  order     Int                @default(0)
+  published Boolean            @default(false)
+  isDemo    Boolean            @default(false)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  @@index([type, order])
+}
+
+model TimelineEvent {
+  id          String   @id @default(cuid())
+  date        DateTime @db.Date
+  title       String
+  description String?
+  imageUrl    String?
+  highlight   Boolean  @default(false)
+  published   Boolean  @default(false)
+  isDemo      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([date])
+}
+
+// Posição no organograma (pode estar vaga: userId nulo)
+model OrgPosition {
+  id               String        @id @default(cuid())
+  title            String
+  responsibilities String?
+  order            Int           @default(0)
+  active           Boolean       @default(true)
+  isDemo           Boolean       @default(false)
+  parentId         String?
+  parent           OrgPosition?  @relation("OrgTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children         OrgPosition[] @relation("OrgTree")
+  departmentId     String?
+  department       Department?   @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  userId           String?
+  user             User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([parentId])
+}
+
+model Announcement {
+  id          String    @id @default(cuid())
+  title       String
+  body        String
+  publishedAt DateTime?
+  expiresAt   DateTime?
+  pinned      Boolean   @default(false)
+  isDemo      Boolean   @default(false)
+  authorId    String?
+  author      User?     @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+enum OnboardingStepType {
+  WELCOME
+  HISTORY
+  VALUES
+  ORGCHART
+  COURSE
+  ASSESSMENT
+  CUSTOM
+  CONCLUSION
+}
+
+model OnboardingTrack {
+  id         String           @id @default(cuid())
+  name       String
+  isDefault  Boolean          @default(false)
+  positionId String?
+  position   Position?        @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  steps      OnboardingStep[]
+  createdAt  DateTime         @default(now())
+  updatedAt  DateTime         @updatedAt
+}
+
+model OnboardingStep {
+  id          String               @id @default(cuid())
+  trackId     String
+  track       OnboardingTrack      @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  order       Int
+  type        OnboardingStepType
+  title       String
+  description String?
+  required    Boolean              @default(true)
+  refId       String? // curso ou avaliação vinculada
+  progress    OnboardingProgress[]
+
+  @@index([trackId, order])
+}
+
+model OnboardingProgress {
+  id          String         @id @default(cuid())
+  userId      String
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  stepId      String
+  step        OnboardingStep @relation(fields: [stepId], references: [id], onDelete: Cascade)
+  completedAt DateTime       @default(now())
+
+  @@unique([userId, stepId])
+}
+
+// ============================================================================
+// FASE 3 — Academy
+// ============================================================================
+
+model CourseCategory {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  slug        String     @unique
+  description String?
+  icon        String? // nome do ícone Lucide
+  order       Int        @default(0)
+  active      Boolean    @default(true)
+  isDemo      Boolean    @default(false)
+  courses     Course[]
+  questions   Question[]
+}
+
+model Brand {
+  id           String     @id @default(cuid())
+  name         String     @unique
+  slug         String     @unique
+  logoUrl      String?
+  summary      String?
+  presentation Json? // documento TipTap
+  website      String?
+  productLines String[]
+  active       Boolean    @default(true)
+  isDemo       Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  courses      Course[]
+  questions    Question[]
+}
+
+enum CourseStatus {
+  DRAFT
+  REVIEW
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CourseLevel {
+  BASIC
+  INTERMEDIATE
+  ADVANCED
+}
+
+model Course {
+  id              String          @id @default(cuid())
+  title           String
+  slug            String          @unique
+  description     String?
+  coverUrl        String?
+  targetAudience  String?
+  durationMinutes Int?
+  workloadHours   Decimal?        @db.Decimal(6, 2) // carga horária do certificado
+  level           CourseLevel     @default(BASIC)
+  mandatory       Boolean         @default(false)
+  publishAt       DateTime?
+  dueDays         Int? // prazo de conclusão após atribuição
+  status          CourseStatus    @default(DRAFT)
+  isDemo          Boolean         @default(false)
+  categoryId      String?
+  category        CourseCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brandId         String?
+  brand           Brand?          @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  instructorId    String?
+  instructor      User?           @relation("CourseInstructor", fields: [instructorId], references: [id], onDelete: SetNull)
+  createdById     String?
+  createdBy       User?           @relation("CourseCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  modules      CourseModule[]
+  assignments  CourseAssignment[]
+  enrollments  Enrollment[]
+  pathCourses  LearningPathCourse[]
+  assessments  Assessment[]
+  certificates Certificate[]
+
+  @@index([status])
+  @@index([categoryId])
+  @@index([brandId])
+}
+
+model CourseModule {
+  id          String   @id @default(cuid())
+  courseId    String
+  course      Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  order       Int
+  lessons     Lesson[]
+
+  @@index([courseId, order])
+}
+
+model Lesson {
+  id               String           @id @default(cuid())
+  moduleId         String
+  module           CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  title            String
+  order            Int
+  estimatedMinutes Int?
+  published        Boolean          @default(false)
+  blocks           LessonBlock[]
+  progress         LessonProgress[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([moduleId, order])
+}
+
+enum LessonBlockType {
+  RICH_TEXT
+  IMAGE
+  VIDEO_UPLOAD
+  VIDEO_EMBED
+  PDF
+  PRESENTATION
+  LINK
+  ACTIVITY
+  ATTACHMENT
+}
+
+model LessonBlock {
+  id       String          @id @default(cuid())
+  lessonId String
+  lesson   Lesson          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  order    Int
+  type     LessonBlockType
+  content  Json // estrutura depende do tipo (validada com Zod)
+  fileId   String?
+  file     FileAsset?      @relation(fields: [fileId], references: [id], onDelete: SetNull)
+
+  @@index([lessonId, order])
+}
+
+model FileAsset {
+  id           String        @id @default(cuid())
+  storageKey   String        @unique
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  checksum     String?
+  uploadedById String?
+  uploadedBy   User?         @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime      @default(now())
+  blocks       LessonBlock[]
+}
+
+enum AssignmentTarget {
+  ALL
+  DEPARTMENT
+  POSITION
+  USER
+}
+
+model CourseAssignment {
+  id           String           @id @default(cuid())
+  courseId     String
+  course       Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  targetType   AssignmentTarget
+  departmentId String?
+  department   Department?      @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  positionId   String?
+  position     Position?        @relation(fields: [positionId], references: [id], onDelete: Cascade)
+  userId       String?
+  user         User?            @relation("AssignmentTarget", fields: [userId], references: [id], onDelete: Cascade)
+  dueDate      DateTime?
+  assignedById String?
+  assignedBy   User?            @relation("AssignmentAuthor", fields: [assignedById], references: [id], onDelete: SetNull)
+  createdAt    DateTime         @default(now())
+
+  @@index([courseId])
+}
+
+// Trilha de aprendizagem (atribuição automática por cargo)
+model LearningPath {
+  id          String               @id @default(cuid())
+  name        String
+  description String?
+  positionId  String?
+  position    Position?            @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  autoAssign  Boolean              @default(true)
+  courses     LearningPathCourse[]
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+}
+
+model LearningPathCourse {
+  pathId   String
+  path     LearningPath @relation(fields: [pathId], references: [id], onDelete: Cascade)
+  courseId String
+  course   Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  order    Int
+
+  @@id([pathId, courseId])
+}
+
+enum EnrollmentStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  COMPLETED
+}
+
+model Enrollment {
+  id          String           @id @default(cuid())
+  userId      String
+  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId    String
+  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  status      EnrollmentStatus @default(NOT_STARTED)
+  source      String? // "assignment", "path", "self"
+  dueDate     DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdAt   DateTime         @default(now())
+
+  @@unique([userId, courseId])
+  @@index([courseId, status])
+}
+
+model LessonProgress {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId    String
+  lesson      Lesson   @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  completedAt DateTime @default(now())
+
+  @@unique([userId, lessonId])
+}
+
+// ============================================================================
+// FASE 4 — Avaliações, notas e certificados
+// ============================================================================
+
+enum QuestionType {
+  MULTIPLE_CHOICE
+  TRUE_FALSE
+  OPEN
+  MATCHING // reservado para evolução futura
+}
+
+model Question {
+  id              String               @id @default(cuid())
+  type            QuestionType
+  statement       String
+  imageUrl        String?
+  points          Decimal              @default(1) @db.Decimal(6, 2)
+  explanation     String?
+  knowledgeArea   String?
+  active          Boolean              @default(true)
+  isDemo          Boolean              @default(false)
+  categoryId      String?
+  category        CourseCategory?      @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  brandId         String?
+  brand           Brand?               @relation(fields: [brandId], references: [id], onDelete: SetNull)
+  createdById     String?
+  createdBy       User?                @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+  options         QuestionOption[]
+  assessmentLinks AssessmentQuestion[]
+  answers         AttemptAnswer[]
+}
+
+model QuestionOption {
+  id         String   @id @default(cuid())
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  text       String
+  isCorrect  Boolean  @default(false)
+  matchKey   String? // reservado para associação de alternativas
+  order      Int
+}
+
+enum AssessmentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum CertificateRule {
+  NONE // não emite certificado
+  ON_PASS // emite ao ter resultado liberado com aprovação
+  ON_PASS_AND_COURSE // exige aprovação + curso concluído
+}
+
+model Assessment {
+  id               String                @id @default(cuid())
+  title            String
+  description      String?
+  status           AssessmentStatus      @default(DRAFT)
+  passingScore     Decimal               @default(70) @db.Decimal(5, 2) // percentual
+  questionCount    Int? // sorteio de N questões; nulo = todas
+  timeLimitMinutes Int?
+  maxAttempts      Int? // nulo = ilimitado (sempre sujeito a autorização)
+  shuffleQuestions Boolean               @default(false)
+  shuffleOptions   Boolean               @default(false)
+  availableFrom    DateTime?
+  availableUntil   DateTime?
+  requiresApproval Boolean               @default(true)
+  certificateRule  CertificateRule       @default(ON_PASS_AND_COURSE)
+  isDemo           Boolean               @default(false)
+  courseId         String?
+  course           Course?               @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+  questions        AssessmentQuestion[]
+  attempts         AssessmentAttempt[]
+  retakes          RetakeAuthorization[]
+}
+
+model AssessmentQuestion {
+  assessmentId   String
+  assessment     Assessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  questionId     String
+  question       Question   @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  order          Int
+  pointsOverride Decimal?   @db.Decimal(6, 2)
+
+  @@id([assessmentId, questionId])
+}
+
+enum AttemptStatus {
+  IN_PROGRESS // colaborador respondendo
+  SUBMITTED // enviada, aguardando análise
+  GRADED // corrigida pelo ADM, ainda não liberada
+  RELEASED // resultado liberado ao colaborador
+}
+
+model AssessmentAttempt {
+  id            String               @id @default(cuid())
+  assessmentId  String
+  assessment    Assessment           @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+  userId        String
+  user          User                 @relation("AttemptUser", fields: [userId], references: [id], onDelete: Restrict)
+  attemptNumber Int
+  status        AttemptStatus        @default(IN_PROGRESS)
+  snapshot      Json // questões/alternativas apresentadas (ordem e pontuação congeladas)
+  startedAt     DateTime             @default(now())
+  deadlineAt    DateTime?
+  submittedAt   DateTime?
+  autoScore     Decimal?             @db.Decimal(8, 2)
+  finalScore    Decimal?             @db.Decimal(8, 2)
+  maxScore      Decimal?             @db.Decimal(8, 2)
+  percentage    Decimal?             @db.Decimal(5, 2)
+  passed        Boolean?
+  gradedById    String?
+  gradedBy      User?                @relation("AttemptGrader", fields: [gradedById], references: [id], onDelete: SetNull)
+  gradedAt      DateTime?
+  releasedById  String?
+  releasedBy    User?                @relation("AttemptReleaser", fields: [releasedById], references: [id], onDelete: SetNull)
+  releasedAt    DateTime?
+  answers       AttemptAnswer[]
+  adjustments   ScoreAdjustment[]
+  retakeUsed    RetakeAuthorization? @relation("RetakeConsumed")
+  certificate   Certificate?
+
+  @@unique([assessmentId, userId, attemptNumber])
+  @@index([status])
+  @@index([userId])
+}
+
+model AttemptAnswer {
+  id                String            @id @default(cuid())
+  attemptId         String
+  attempt           AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  questionId        String
+  question          Question          @relation(fields: [questionId], references: [id], onDelete: Restrict)
+  selectedOptionIds String[]
+  textAnswer        String?
+  autoPoints        Decimal?          @db.Decimal(6, 2)
+  manualPoints      Decimal?          @db.Decimal(6, 2)
+  feedback          String?
+  gradedById        String?
+  gradedBy          User?             @relation(fields: [gradedById], references: [id], onDelete: SetNull)
+  adjustments       ScoreAdjustment[]
+
+  @@unique([attemptId, questionId])
+}
+
+// Histórico imutável de alterações de nota (com justificativa)
+model ScoreAdjustment {
+  id            String            @id @default(cuid())
+  attemptId     String
+  attempt       AssessmentAttempt @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  answerId      String?
+  answer        AttemptAnswer?    @relation(fields: [answerId], references: [id], onDelete: Restrict)
+  previousValue Decimal?          @db.Decimal(8, 2)
+  newValue      Decimal           @db.Decimal(8, 2)
+  justification String
+  adjustedById  String?
+  adjustedBy    User?             @relation(fields: [adjustedById], references: [id], onDelete: SetNull)
+  createdAt     DateTime          @default(now())
+}
+
+// Autorização administrativa para nova tentativa (independente da liberação da nota)
+model RetakeAuthorization {
+  id                String             @id @default(cuid())
+  assessmentId      String
+  assessment        Assessment         @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+  userId            String
+  user              User               @relation("RetakeUser", fields: [userId], references: [id], onDelete: Restrict)
+  authorizedById    String?
+  authorizedBy      User?              @relation("RetakeAuthor", fields: [authorizedById], references: [id], onDelete: SetNull)
+  reason            String?
+  createdAt         DateTime           @default(now())
+  consumedAttemptId String?            @unique
+  consumedAttempt   AssessmentAttempt? @relation("RetakeConsumed", fields: [consumedAttemptId], references: [id], onDelete: Restrict)
+  revokedAt         DateTime?
+
+  @@index([assessmentId, userId])
+}
+
+model Certificate {
+  id                  String             @id @default(cuid())
+  code                String             @unique // identificador público de validação
+  userId              String
+  user                User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  courseId            String?
+  course              Course?            @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  attemptId           String?            @unique
+  attempt             AssessmentAttempt? @relation(fields: [attemptId], references: [id], onDelete: Restrict)
+  userNameSnapshot    String
+  courseTitleSnapshot String
+  workloadHours       Decimal?           @db.Decimal(6, 2)
+  completedAt         DateTime
+  issuedAt            DateTime           @default(now())
+  revokedAt           DateTime?
+  revokeReason        String?
+
+  @@index([userId])
+}
+
+// ============================================================================
+// FASE 5 — Desenvolvimento: jornada, metas, conquistas e dúvidas
+// ============================================================================
+
+enum CareerEventType {
+  ADMISSION
+  POSITION_CHANGE
+  PROMOTION
+  MILESTONE
+  TRAINING
+  RECOGNITION
+}
+
+model CareerEvent {
+  id            String          @id @default(cuid())
+  userId        String
+  user          User            @relation("CareerEventUser", fields: [userId], references: [id], onDelete: Cascade)
+  type          CareerEventType
+  title         String
+  description   String?
+  date          DateTime        @db.Date
+  positionId    String?
+  position      Position?       @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  visibleToUser Boolean         @default(true)
+  createdById   String?
+  createdBy     User?           @relation("CareerEventAuthor", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt     DateTime        @default(now())
+
+  @@index([userId, date])
+}
+
+model Feedback {
+  id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation("FeedbackUser", fields: [userId], references: [id], onDelete: Cascade)
+  authorId      String?
+  author        User?    @relation("FeedbackAuthor", fields: [authorId], references: [id], onDelete: SetNull)
+  content       String
+  date          DateTime @db.Date
+  visibleToUser Boolean  @default(false) // só aparece ao colaborador se autorizado
+  createdAt     DateTime @default(now())
+}
+
+model Competency {
+  id          String            @id @default(cuid())
+  name        String            @unique
+  description String?
+  users       UserCompetency[]
+  goals       DevelopmentGoal[]
+}
+
+model UserCompetency {
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  competencyId String
+  competency   Competency @relation(fields: [competencyId], references: [id], onDelete: Cascade)
+  level        Int // 1 a 5
+  assessedAt   DateTime   @default(now())
+
+  @@id([userId, competencyId])
+}
+
+// PDI — Plano de desenvolvimento individual
+model DevelopmentPlan {
+  id        String            @id @default(cuid())
+  userId    String
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  period    String // ex.: "2026"
+  summary   String?
+  goals     DevelopmentGoal[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+}
+
+enum GoalStatus {
+  PLANNED
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
+model DevelopmentGoal {
+  id           String          @id @default(cuid())
+  planId       String
+  plan         DevelopmentPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  status       GoalStatus      @default(PLANNED)
+  dueDate      DateTime?       @db.Date
+  competencyId String?
+  competency   Competency?     @relation(fields: [competencyId], references: [id], onDelete: SetNull)
+}
+
+enum IndicatorUnit {
+  CURRENCY
+  PERCENT
+  NUMBER
+}
+
+// Indicador configurável por cargo/departamento (ex.: faturamento mensal)
+model Indicator {
+  id             String            @id @default(cuid())
+  name           String
+  description    String?
+  unit           IndicatorUnit
+  higherIsBetter Boolean           @default(true)
+  active         Boolean           @default(true)
+  departmentId   String?
+  department     Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  positionId     String?
+  position       Position?         @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  results        IndicatorResult[]
+}
+
+model IndicatorResult {
+  id          String    @id @default(cuid())
+  indicatorId String
+  indicator   Indicator @relation(fields: [indicatorId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation("IndicatorResultUser", fields: [userId], references: [id], onDelete: Cascade)
+  period      String // "AAAA-MM"
+  target      Decimal   @db.Decimal(14, 2)
+  actual      Decimal?  @db.Decimal(14, 2)
+  source      String    @default("manual") // "manual" ou integração futura
+  updatedById String?
+  updatedBy   User?     @relation("IndicatorResultAuthor", fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([indicatorId, userId, period])
+}
+
+model BadgeCategory {
+  id     String  @id @default(cuid())
+  name   String  @unique
+  badges Badge[]
+}
+
+enum BadgeCriterion {
+  TENURE_MONTHS
+  COURSES_COMPLETED
+  GOALS_MET
+  CONSECUTIVE_GOALS
+  MANUAL
+}
+
+model Badge {
+  id          String         @id @default(cuid())
+  name        String
+  description String?
+  icon        String // nome do ícone Lucide
+  color       String?
+  criterion   BadgeCriterion
+  threshold   Int?
+  active      Boolean        @default(true)
+  categoryId  String?
+  category    BadgeCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  awards      UserBadge[]
+}
+
+model UserBadge {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation("BadgeUser", fields: [userId], references: [id], onDelete: Cascade)
+  badgeId     String
+  badge       Badge    @relation(fields: [badgeId], references: [id], onDelete: Cascade)
+  note        String?
+  awardedById String?
+  awardedBy   User?    @relation("BadgeAuthor", fields: [awardedById], references: [id], onDelete: SetNull)
+  awardedAt   DateTime @default(now())
+
+  @@index([userId])
+}
+
+enum InquiryCategory {
+  PRODUCT
+  APPLICATION
+  TRAINING
+  INTERNAL_PROCESS
+}
+
+enum InquiryStatus {
+  RECEIVED
+  IN_ANALYSIS
+  ANSWERED
+  CLOSED
+}
+
+model Inquiry {
+  id          String           @id @default(cuid())
+  authorId    String
+  author      User             @relation("InquiryAuthor", fields: [authorId], references: [id], onDelete: Cascade)
+  category    InquiryCategory
+  subject     String
+  description String
+  status      InquiryStatus    @default(RECEIVED)
+  assigneeId  String?
+  assignee    User?            @relation("InquiryAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  messages    InquiryMessage[]
+  faq         Faq?
+
+  @@index([status])
+  @@index([authorId])
+}
+
+model InquiryMessage {
+  id        String   @id @default(cuid())
+  inquiryId String
+  inquiry   Inquiry  @relation(fields: [inquiryId], references: [id], onDelete: Cascade)
+  authorId  String?
+  author    User?    @relation(fields: [authorId], references: [id], onDelete: SetNull)
+  body      String
+  internal  Boolean  @default(false) // nota interna entre ADMs (encaminhamento)
+  createdAt DateTime @default(now())
+}
+
+model Faq {
+  id              String          @id @default(cuid())
+  question        String
+  answer          String
+  category        InquiryCategory
+  published       Boolean         @default(true)
+  order           Int             @default(0)
+  sourceInquiryId String?         @unique
+  sourceInquiry   Inquiry?        @relation(fields: [sourceInquiryId], references: [id], onDelete: SetNull)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
