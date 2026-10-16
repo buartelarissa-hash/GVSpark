@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { KeyRound } from "lucide-react";
-import { Logo } from "@/components/brand/logo";
+import { GigavaleLogo, Logo } from "@/components/brand/logo";
 import { Card, CardContent } from "@/components/ui/card";
 import { getCurrentUser } from "@/server/auth/current-user";
 import { homePathFor } from "@/server/permissions/permissions";
@@ -16,7 +16,11 @@ export default async function ChangePasswordPage() {
   if (!user.mustChangePassword) redirect(homePathFor(user.role));
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center bg-surface px-4 py-12">
-      <Logo variant="dark" showTagline className="mb-8" />
+      <div className="mb-8 flex items-center gap-5">
+        <Logo variant="dark" showTagline />
+        <span className="h-10 w-px bg-border" aria-hidden="true" />
+        <GigavaleLogo className="w-28" />
+      </div>
       <Card className="w-full max-w-md">
         <CardContent className="p-6 sm:p-8">
           <span className="flex size-11 items-center justify-center rounded-full bg-spark-100 text-navy-900">

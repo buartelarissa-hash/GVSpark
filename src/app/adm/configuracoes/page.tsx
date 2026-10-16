@@ -7,6 +7,7 @@ import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/ca
 import { Table, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { EmptyState } from "@/components/ui/empty-state";
 import { ROLE_LABELS, ROLES } from "@/lib/roles";
+import { GigavaleLogo } from "@/components/brand/logo";
 import { auditLabel } from "@/lib/audit-labels";
 import { formatDateTime } from "@/lib/format";
 import { History } from "lucide-react";
@@ -15,8 +16,8 @@ export const metadata = { title: "Configurações e permissões" };
 
 const palette = [
   { name: "Azul-marinho principal", token: "navy-900", hex: "#08234A", cls: "bg-navy-900" },
-  { name: "Azul secundário", token: "navy-700", hex: "#153B69", cls: "bg-navy-700" },
-  { name: "Amarelo destaque", token: "spark-500", hex: "#FFCA28", cls: "bg-spark-500" },
+  { name: "Azul Gigavale", token: "navy-700", hex: "#023F88", cls: "bg-navy-700" },
+  { name: "Amarelo Gigavale", token: "spark-500", hex: "#FFCB05", cls: "bg-spark-500" },
   { name: "Branco", token: "white", hex: "#FFFFFF", cls: "bg-white" },
   { name: "Cinza de fundo", token: "surface", hex: "#F5F7FA", cls: "bg-surface" },
 ];
@@ -89,10 +90,15 @@ export default async function SettingsPage() {
           <CardHeader className="block">
             <CardTitle>Identidade visual</CardTitle>
             <CardDescription>
-              Paleta inicial definida como variáveis globais em <code className="rounded bg-navy-50 px-1">src/app/globals.css</code>. O logotipo provisório fica em{" "}
-              <code className="rounded bg-navy-50 px-1">src/components/brand/logo.tsx</code>.
+              Azul e amarelo extraídos da logo oficial da Gigavale. As cores são variáveis globais em{" "}
+              <code className="rounded bg-navy-50 px-1">src/app/globals.css</code>; a logo fica em{" "}
+              <code className="rounded bg-navy-50 px-1">public/brand/gigavale-logo.png</code>.
             </CardDescription>
           </CardHeader>
+          <div className="flex items-center gap-4 border-b border-border px-5 py-4">
+            <GigavaleLogo className="w-32" />
+            <p className="text-xs text-muted">Logo oficial — usada no login e no menu lateral.</p>
+          </div>
           <ul className="grid gap-4 p-5 sm:grid-cols-3 lg:grid-cols-5">
             {palette.map((c) => (
               <li key={c.token} className="overflow-hidden rounded-lg border border-border">

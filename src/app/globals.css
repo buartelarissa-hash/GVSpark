@@ -3,21 +3,22 @@
 
 /*
  * Tokens de marca do GV SPARK.
- * Para ajustar a paleta aos materiais oficiais, altere apenas este bloco.
+ * Azul e amarelo extraídos da logo oficial da Gigavale Atacado (public/brand/gigavale-logo.png).
+ * Para ajustar a paleta, altere apenas este bloco.
  */
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, sans-serif;
 
   --color-navy-950: #051831;
   --color-navy-900: #08234a; /* azul-marinho principal */
-  --color-navy-800: #0e2f5c;
-  --color-navy-700: #153b69; /* azul secundário */
-  --color-navy-600: #24507f;
+  --color-navy-800: #172b75; /* contorno da logo Gigavale */
+  --color-navy-700: #023f88; /* azul oficial Gigavale */
+  --color-navy-600: #1d56a0;
   --color-navy-100: #e3eaf3;
   --color-navy-50: #f0f4f9;
 
-  --color-spark-500: #ffca28; /* amarelo destaque */
-  --color-spark-600: #f2b705;
+  --color-spark-500: #ffcb05; /* amarelo oficial Gigavale */
+  --color-spark-600: #e6b600;
   --color-spark-100: #fff4cc;
   --color-spark-50: #fffaeb;
 

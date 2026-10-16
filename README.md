@@ -83,5 +83,6 @@ O seed demonstrativo não deve ser usado em produção. Para criar o primeiro ad
 
 ## Identidade visual
 
-- Cores: variáveis globais em `src/app/globals.css` (`navy-900 #08234A`, `navy-700 #153B69`, `spark-500 #FFCA28`, `surface #F5F7FA`).
-- Logotipo **provisório**: `src/components/brand/logo.tsx`. Ele é o único ponto a trocar pela logo oficial.
+- Cores: variáveis globais em `src/app/globals.css`. Azul `#023F88` e amarelo `#FFCB05` foram extraídos da logo oficial da Gigavale; o menu usa o azul-marinho `#08234A`.
+- Logo oficial da Gigavale Atacado: `public/brand/gigavale-logo.png`, usada no login e no menu lateral.
+- Marca do produto GV SPARK (símbolo de faísca): `src/components/brand/logo.tsx`.

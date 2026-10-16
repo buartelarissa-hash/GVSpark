@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { BookOpenCheck, Rocket, Trophy } from "lucide-react";
-import { Logo } from "@/components/brand/logo";
+import { GigavaleLogo, Logo } from "@/components/brand/logo";
 import { getCurrentUser } from "@/server/auth/current-user";
 import { homePathFor } from "@/server/permissions/permissions";
 import { LoginForm } from "./login-form";
@@ -54,6 +54,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
 
       <section className="flex items-center justify-center px-4 py-12 sm:px-8">
         <div className="w-full max-w-sm">
+          <GigavaleLogo priority className="mb-8 w-40" />
           <div className="mb-8 lg:hidden">
             <Logo variant="dark" showTagline />
           </div>

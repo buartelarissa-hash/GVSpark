@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 /**
@@ -38,5 +39,22 @@ export function Logo({
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Logo oficial da Gigavale Atacado. Fundo transparente com letras azuis:
+ * use sobre fundos claros (ou dentro de um contêiner branco em fundos escuros).
+ */
+export function GigavaleLogo({ className, priority }: { className?: string; priority?: boolean }) {
+  return (
+    <Image
+      src="/brand/gigavale-logo.png"
+      alt="Gigavale Atacado"
+      width={900}
+      height={387}
+      priority={priority}
+      className={cn("h-auto w-36", className)}
+    />
   );
 }

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import * as Dropdown from "@radix-ui/react-dropdown-menu";
 import { ArrowLeftRight, ChevronDown, LogOut, Menu, UserRound, X } from "lucide-react";
-import { Logo } from "@/components/brand/logo";
+import { GigavaleLogo, Logo } from "@/components/brand/logo";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import { logoutAction } from "@/app/actions/auth";
@@ -112,7 +112,9 @@ export function AppShell({
             <span className="size-1.5 rounded-full bg-spark-500/70" aria-hidden="true" /> Em breve
           </p>
         )}
-        <p>Gigavale Atacado · GV SPARK</p>
+        <div className="mt-2 flex justify-center rounded-lg bg-white px-3 py-2">
+          <GigavaleLogo className="w-24" />
+        </div>
       </div>
     </div>
   );
