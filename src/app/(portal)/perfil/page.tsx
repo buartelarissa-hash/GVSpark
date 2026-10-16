@@ -6,6 +6,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { PageHeader } from "@/components/ui/page-header";
 import { ChangePasswordForm } from "@/app/alterar-senha/change-password-form";
+import { PhotoForm } from "@/components/content/photo-form";
 import { ROLE_LABELS } from "@/lib/roles";
 import { formatDate, formatDateTime, tenure } from "@/lib/format";
 
@@ -59,6 +60,16 @@ export default async function ProfilePage() {
             </dl>
           </CardContent>
         </Card>
+        <div className="space-y-6">
+        <Card>
+          <CardHeader className="block">
+            <CardTitle>Foto de perfil</CardTitle>
+            <CardDescription>Aparece no organograma e no seu perfil.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PhotoForm userId={user.id} currentUrl={user.avatarUrl} />
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="block">
             <CardTitle>Alterar senha</CardTitle>
@@ -68,6 +79,7 @@ export default async function ProfilePage() {
             <ChangePasswordForm />
           </CardContent>
         </Card>
+        </div>
       </div>
     </>
   );

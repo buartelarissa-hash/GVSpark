@@ -9,6 +9,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { ROLE_LABELS, ROLES } from "@/lib/roles";
 import type { ActionState } from "@/lib/validation";
+import { keepFormValues } from "@/lib/forms";
 
 type Options = {
   departments: { id: string; name: string }[];
@@ -81,7 +82,7 @@ export function UserForm({
   }
 
   return (
-    <form action={formAction} className="space-y-6" noValidate>
+    <form ref={keepFormValues} action={formAction} className="space-y-6" noValidate>
       {defaults.id && <input type="hidden" name="id" value={defaults.id} />}
       {state.message && <Alert tone={state.ok ? "success" : "danger"}>{state.message}</Alert>}
 

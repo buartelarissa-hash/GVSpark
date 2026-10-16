@@ -115,7 +115,7 @@ describe("rotas e menus", () => {
     expect(labels("GESTOR")).not.toContain("/adm/configuracoes");
     expect(labels("INSTRUTOR")).toContain("/adm/avaliacoes");
     expect(labels("INSTRUTOR")).not.toContain("/adm/colaboradores");
-    expect(labels("ADMIN")).toHaveLength(17);
+    expect(labels("ADMIN")).toHaveLength(18);
   });
 
   it("menu do colaborador é o mesmo para todos os perfis", () => {

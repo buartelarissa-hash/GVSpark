@@ -42,9 +42,9 @@ export const COLABORADOR_NAV: NavGroup[] = [
   {
     label: "Integração",
     items: [
-      { label: "Minha integração", href: "/integracao", icon: Rocket, phase: 2 },
-      { label: "Nossa história", href: "/nossa-historia", icon: Landmark, phase: 2 },
-      { label: "Organograma", href: "/organograma", icon: Network, phase: 2 },
+      { label: "Minha integração", href: "/integracao", icon: Rocket },
+      { label: "Nossa história", href: "/nossa-historia", icon: Landmark },
+      { label: "Organograma", href: "/organograma", icon: Network },
     ],
   },
   {
@@ -75,8 +75,9 @@ export const ADMIN_NAV: NavGroup[] = [
     items: [
       { label: "Colaboradores", href: "/adm/colaboradores", icon: Users, anyOf: ["users.view"] },
       { label: "Departamentos e cargos", href: "/adm/departamentos", icon: Building2, anyOf: ["org.manage"] },
-      { label: "História e cultura", href: "/adm/historia", icon: Landmark, anyOf: ["content.manage"], phase: 2 },
-      { label: "Organograma", href: "/adm/organograma", icon: Network, anyOf: ["org.manage"], phase: 2 },
+      { label: "História e cultura", href: "/adm/historia", icon: Landmark, anyOf: ["content.manage"] },
+      { label: "Organograma", href: "/adm/organograma", icon: Network, anyOf: ["org.manage"] },
+      { label: "Trilhas de integração", href: "/adm/integracao", icon: Rocket, anyOf: ["content.manage"] },
     ],
   },
   {

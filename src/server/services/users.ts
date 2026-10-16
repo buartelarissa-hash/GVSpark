@@ -6,6 +6,7 @@ import { generateTemporaryPassword, hashPassword } from "@/server/auth/password"
 import { destroyUserSessions } from "@/server/auth/session";
 import { canEditUser, selfChangeError, userScopeFor } from "@/server/permissions/permissions";
 import { parseDateInput } from "@/lib/format";
+import { formFile, saveImageUpload } from "./files";
 import type { UserFormInput } from "@/lib/validation";
 import type { CurrentUser } from "@/server/auth/current-user";
 
@@ -95,6 +96,7 @@ export async function getUserForActor(actor: CurrentUser, id: string) {
   return db.user.findFirst({
     where: { AND: [{ id }, visibleUsersWhere(actor)] },
     select: {
+      avatarUrl: true,
       id: true,
       name: true,
       username: true,
@@ -269,4 +271,20 @@ export async function userFormOptions() {
     }),
   ]);
   return { departments, positions, managers };
+}
+
+/**
+ * Atualiza a foto de um colaborador. Permitido ao próprio colaborador e a quem
+ * pode editá-lo (administrador ou gestor da equipe).
+ */
+export async function updateUserPhoto(actor: CurrentUser, id: string, fd: FormData) {
+  if (actor.id !== id) await loadEditableUser(actor, id);
+  const file = formFile(fd, "photo");
+  const remove = fd.get("photoRemove") === "1";
+  if (!file && !remove) throw new ServiceError("Selecione uma foto.", "photo");
+  const avatarUrl = file ? await saveImageUpload(actor, file, "fotos") : null;
+  await db.$transaction(async (tx) => {
+    await tx.user.update({ where: { id }, data: { avatarUrl } });
+    await audit({ actorId: actor.id, action: "user.photo", entity: "User", entityId: id }, tx);
+  });
 }

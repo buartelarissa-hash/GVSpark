@@ -7,6 +7,7 @@ import { Button, type ButtonProps } from "./button";
 import { SubmitButton } from "./submit-button";
 import { Alert } from "./alert";
 import type { ActionState } from "@/lib/validation";
+import { keepFormValues } from "@/lib/forms";
 
 type ActionFn = (prev: ActionState, fd: FormData) => Promise<ActionState>;
 
@@ -117,7 +118,7 @@ function ConfirmBody({
           {state.message}
         </Alert>
       )}
-      <form action={formAction} className="flex justify-end gap-2">
+      <form ref={keepFormValues} action={formAction} className="flex justify-end gap-2">
         {Object.entries(hidden).map(([k, v]) => (
           <input key={k} type="hidden" name={k} value={v} />
         ))}

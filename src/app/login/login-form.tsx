@@ -6,12 +6,13 @@ import { Field, Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Alert } from "@/components/ui/alert";
 import { loginAction } from "./actions";
+import { keepFormValues } from "@/lib/forms";
 
 export function LoginForm({ next }: { next?: string }) {
   const [state, action] = useActionState(loginAction, {});
   const [show, setShow] = useState(false);
   return (
-    <form action={action} className="space-y-5" noValidate>
+    <form ref={keepFormValues} action={action} className="space-y-5" noValidate>
       {state.message && <Alert tone="danger">{state.message}</Alert>}
       {next && <input type="hidden" name="next" value={next} />}
       <Field label="Usuário" htmlFor="username" error={state.errors?.username}>

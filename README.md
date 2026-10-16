@@ -81,6 +81,14 @@ O seed demonstrativo não deve ser usado em produção. Para criar o primeiro ad
 | Instrutor | **Aplicar provas e corrigir/editar notas de todas as provas de todos os cursos**, liberar resultados, autorizar novas tentativas e gerenciar os próprios cursos |
 | Colaborador | Ver apenas as próprias informações e os conteúdos liberados |
 
+## Conteúdo institucional e integração (Fase 2)
+
+- **Portal ADM › História e cultura:** seções com editor visual (história, fundadores, missão, visão, valores, propósito, cultura e vídeo do YouTube/Vimeo), linha do tempo com fotos e comunicados. Só aparece para os colaboradores o que estiver publicado.
+- **Portal ADM › Organograma:** posições ocupadas ou vagas, que podem ser movidas, reordenadas e desativadas. O botão "Importar dos cadastros" monta a estrutura a partir dos gestores definidos em cada colaborador.
+- **Portal ADM › Trilhas de integração:** uma trilha padrão e trilhas específicas por cargo, com as etapas e o andamento de cada colaborador.
+- **Fotos:** o ADM ou o gestor trocam a foto na ficha do colaborador; o próprio colaborador troca a sua em "Meu perfil".
+- O seed cria conteúdo **demonstrativo** (com o selo) para a história, a linha do tempo e o organograma. Ao editar e salvar uma seção, o selo é removido.
+
 ## Identidade visual
 
 - Cores: variáveis globais em `src/app/globals.css`. Azul `#023F88` e amarelo `#FFCB05` foram extraídos da logo oficial da Gigavale; o menu usa o azul-marinho `#08234A`.

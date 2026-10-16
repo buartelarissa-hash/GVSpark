@@ -10,6 +10,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 import { Alert } from "@/components/ui/alert";
 import type { ActionState } from "@/lib/validation";
 import { saveDepartmentAction, savePositionAction } from "./actions";
+import { keepFormValues } from "@/lib/forms";
 
 type Opt = { id: string; name: string };
 
@@ -52,7 +53,7 @@ export function DepartmentDialog({
         <TriggerButton editing={!!department} label={department ? department.name : "Novo departamento"} />
       </DialogTrigger>
       <DialogContent title={department ? "Editar departamento" : "Novo departamento"}>
-        <form action={action} className="space-y-4" key={open ? "open" : "closed"}>
+        <form ref={keepFormValues} action={action} className="space-y-4" key={open ? "open" : "closed"}>
           {state.message && !state.ok && <Alert tone="danger">{state.message}</Alert>}
           {department && <input type="hidden" name="id" value={department.id} />}
           <Field label="Nome" htmlFor="dep-name" error={e.name} required>
@@ -108,7 +109,7 @@ export function PositionDialog({
         <TriggerButton editing={!!position} label={position ? position.title : "Novo cargo"} />
       </DialogTrigger>
       <DialogContent title={position ? "Editar cargo" : "Novo cargo"}>
-        <form action={action} className="space-y-4" key={open ? "open" : "closed"}>
+        <form ref={keepFormValues} action={action} className="space-y-4" key={open ? "open" : "closed"}>
           {state.message && !state.ok && <Alert tone="danger">{state.message}</Alert>}
           {position && <input type="hidden" name="id" value={position.id} />}
           <Field label="Nome do cargo" htmlFor="pos-title" error={e.title} required>

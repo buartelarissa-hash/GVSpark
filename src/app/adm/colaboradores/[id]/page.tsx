@@ -14,6 +14,7 @@ import { ROLE_LABELS, STATUS_LABELS } from "@/lib/roles";
 import { auditLabel } from "@/lib/audit-labels";
 import { formatDate, formatDateTime, tenure, toDateInput } from "@/lib/format";
 import { UserForm } from "../user-form";
+import { PhotoForm } from "@/components/content/photo-form";
 import { resetPasswordAction, setUserStatusAction, updateUserAction } from "../actions";
 
 export const metadata = { title: "Colaborador" };
@@ -95,7 +96,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center gap-4">
-                <Avatar name={user.name} size="lg" />
+                <Avatar name={user.name} src={user.avatarUrl} size="lg" />
                 <div className="space-y-1">
                   <div className="flex flex-wrap gap-1.5">
                     <Badge tone={user.status === "ACTIVE" ? "success" : "danger"}>{STATUS_LABELS[user.status]}</Badge>
@@ -123,6 +124,17 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
               </dl>
             </CardContent>
           </Card>
+
+          {canEdit && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Foto</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <PhotoForm userId={user.id} currentUrl={user.avatarUrl} />
+              </CardContent>
+            </Card>
+          )}
 
           {history && (
             <Card>

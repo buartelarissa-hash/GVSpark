@@ -71,6 +71,9 @@ Separação de responsabilidades: **páginas e componentes** só apresentam; **s
 - `?next=` só aceita caminhos internos (sem open redirect); um colaborador nunca é redirecionado para `/adm`.
 - Auditoria: tabela `AuditLog` (quem, o quê, quando, IP) para login/logout, cadastro, alterações e status.
 - Cabeçalhos de segurança (`X-Frame-Options`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`).
+- Arquivos (Fase 2): imagens validadas pelo conteúdo binário (JPG/PNG/WEBP/GIF, até 5 MB — um SVG renomeado é recusado), guardadas fora de `/public` e entregues apenas a usuários logados por `/api/arquivos/[id]`. O driver S3 (Cloudflare R2/AWS/Supabase) com upload direto do navegador entra na Fase 3, junto com vídeos.
+- Texto formatado: o JSON do editor é saneado no servidor (só nós/marcas permitidos, links apenas http/https/mailto) e exibido por um renderizador próprio em React, sem HTML bruto.
+- Vídeos externos: só YouTube (domínio sem cookies) e Vimeo são incorporados.
 - Previsto para as próximas fases: histórico imutável de notas (`ScoreAdjustment`), uploads com validação de tipo/tamanho servidos por rota autenticada, política de retenção configurável (`Setting`) e rotina de backup (`pg_dump`) documentada.
 
 ## 5. Modelo de dados (visão geral)
@@ -101,9 +104,9 @@ O schema completo já está em `prisma/schema.prisma` e validado por migration, 
 | `/login`, `/alterar-senha` | Login e troca obrigatória de senha | 1 ✅ |
 | `/inicio` | Dashboard personalizado | 1 ✅ (os blocos se preenchem conforme as fases) |
 | `/perfil` | Meu perfil e alteração de senha | 1 ✅ |
-| `/integracao` | Jornada de integração com progresso | 2 |
-| `/nossa-historia` | História, linha do tempo, missão, visão, valores, vídeo | 2 |
-| `/organograma` | Organograma interativo | 2 |
+| `/integracao` | Jornada de integração com progresso | 2 ✅ |
+| `/nossa-historia` | História, fundadores, linha do tempo, missão, visão, valores, vídeo, cultura | 2 ✅ |
+| `/organograma` | Organograma interativo (árvore e lista, busca, detalhes) | 2 ✅ |
 | `/academy`, `/academy/cursos/[slug]`, `/academy/aulas/[id]` | Biblioteca, curso, visualizador de aula | 3 |
 | `/academy/marcas`, `/academy/marcas/[slug]` | Marcas parceiras | 3 |
 | `/academy/avaliacoes/[id]` | Realização de prova | 4 |
@@ -120,7 +123,9 @@ O schema completo já está em `prisma/schema.prisma` e validado por migration, 
 | `/adm/colaboradores`, `/novo`, `/[id]` | Lista com busca/filtros/paginação, cadastro, edição, senha temporária, desativação | 1 ✅ |
 | `/adm/departamentos` | Departamentos e cargos (criar, editar, arquivar) | 1 ✅ |
 | `/adm/configuracoes` | Matriz de permissões, identidade visual, auditoria | 1 ✅ |
-| `/adm/historia`, `/adm/organograma` | Conteúdo institucional e organograma | 2 |
+| `/adm/historia` (+ `/linha-do-tempo`, `/comunicados`, `/secoes/...`) | Conteúdo institucional com editor visual, linha do tempo com fotos, comunicados | 2 ✅ |
+| `/adm/organograma` | Posições (vagas ou ocupadas), mover, reordenar, desativar, importar dos cadastros | 2 ✅ |
+| `/adm/integracao`, `/adm/integracao/[id]` | Trilhas por cargo, etapas, andamento dos colaboradores | 2 ✅ |
 | `/adm/cursos`, `/adm/aulas`, `/adm/marcas` | Academy Builder | 3 |
 | `/adm/questoes`, `/adm/avaliacoes`, `/adm/notas`, `/adm/certificados` | Avaliações, correção, liberação, novas tentativas | 4 |
 | `/adm/jornada`, `/adm/metas`, `/adm/duvidas` | Desenvolvimento | 5 |
@@ -131,8 +136,18 @@ As rotas das fases futuras já existem, protegidas pela permissão correta, e mo
 ## 7. Plano por fases
 
 1. **Fundação** ✅: estrutura, identidade visual, login, banco, perfis e permissões, layout dos dois portais, gestão de colaboradores, departamentos e cargos, auditoria.
-2. **Integração**: editor de história e cultura (TipTap), linha do tempo, organograma interativo com posições vagas, trilha de integração por cargo, comunicados.
+2. **Integração** ✅: editor de história e cultura (TipTap), linha do tempo, organograma interativo com posições vagas, trilha de integração por cargo, comunicados, fotos dos colaboradores.
 3. **Academy**: categorias, marcas, Academy Builder (curso → módulos → aulas → blocos com arrastar e soltar), upload seguro (driver local/S3), visualizador de aulas, progresso, atribuições e trilhas automáticas por cargo.
 4. **Avaliações**: banco de questões, editor de provas, realização com tempo-limite, correção manual, ajuste com justificativa, liberação, autorização de nova tentativa, histórico acadêmico com gráficos, certificados em PDF com código de validação. Testes obrigatórios do bloqueio de nota e da regra de nova tentativa.
 5. **Desenvolvimento**: jornada profissional, PDI, competências, indicadores por cargo, metas mensais, medalhas, central de dúvidas e FAQ.
 6. **Gestão**: relatórios com exportação (CSV/XLSX), indicadores, consulta de auditoria com filtros, política de retenção, revisão de segurança e testes finais (E2E).
+
+## 8. Notas de implementação
+
+- **Formulários e React 19:** o React limpa formulários com `action` depois do envio, inclusive quando o servidor recusa os dados. Todos os formulários usam `ref={keepFormValues}` (`src/lib/forms.ts`) para manter o que foi digitado.
+- **Jornada de integração (modelo híbrido):** `src/lib/onboarding.ts` concentra as regras.
+  - As etapas obrigatórias liberam-se em ordem; as opcionais podem ser feitas a qualquer momento.
+  - As etapas de curso e de avaliação são concluídas pelo sistema (Fases 3 e 4); a etapa de conclusão, automaticamente.
+  - Os materiais de consulta continuam livres no menu.
+  - Cada cargo pode ter a própria trilha; quem não tem segue a trilha padrão.
+- **Organograma:** ao desativar uma posição, as subordinadas sobem um nível. "Importar dos cadastros" cria posições seguindo o gestor de cada colaborador, sem duplicar.

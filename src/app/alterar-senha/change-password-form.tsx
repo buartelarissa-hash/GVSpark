@@ -1,15 +1,21 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useRef } from "react";
 import { Field, Input } from "@/components/ui/input";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { Alert } from "@/components/ui/alert";
 import { changePasswordAction } from "./actions";
+import { keepFormValues } from "@/lib/forms";
 
 export function ChangePasswordForm() {
   const [state, action] = useActionState(changePasswordAction, {});
+  const formRef = useRef<HTMLFormElement>(null);
+  // Após sucesso, limpa as senhas (o formulário não é reiniciado automaticamente).
+  useEffect(() => {
+    if (state.ok) formRef.current?.querySelectorAll("input").forEach((i) => (i.value = ""));
+  }, [state]);
   return (
-    <form action={action} className="space-y-4">
+    <form ref={(f) => { formRef.current = f; keepFormValues(f); }} action={action} className="space-y-4">
       {state.ok && <Alert tone="success">{state.message}</Alert>}
       <Field label="Senha atual" htmlFor="current" error={state.errors?.current} required>
         <Input id="current" name="current" type="password" autoComplete="current-password" required aria-invalid={!!state.errors?.current} />

@@ -118,6 +118,9 @@ export default async function DashboardPage() {
                     <span className="text-lg font-bold text-navy-900">{data.onboarding.percent}%</span>
                   </div>
                   <Progress value={data.onboarding.percent} label="Progresso da integração" />
+                  <Link href="/integracao" className="mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-navy-700 hover:underline">
+                    {data.onboarding.finished ? "Rever minha integração" : "Continuar minha integração"} <ArrowRight className="size-4" aria-hidden="true" />
+                  </Link>
                 </div>
               ) : (
                 <p className="text-sm text-muted">

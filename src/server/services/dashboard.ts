@@ -2,6 +2,7 @@ import "server-only";
 import { db } from "@/server/db";
 import type { CurrentUser } from "@/server/auth/current-user";
 import { visibleUsersWhere } from "./users";
+import { getUserOnboarding } from "./onboarding";
 
 function currentPeriod(now = new Date()) {
   return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
@@ -11,22 +12,9 @@ function currentPeriod(now = new Date()) {
 export async function getCollaboratorDashboard(user: CurrentUser) {
   const now = new Date();
 
-  const track =
-    (user.position &&
-      (await db.onboardingTrack.findFirst({
-        where: { positionId: user.position.id },
-        select: { id: true, steps: { select: { id: true, required: true } } },
-      }))) ||
-    (await db.onboardingTrack.findFirst({
-      where: { isDefault: true },
-      select: { id: true, steps: { select: { id: true, required: true } } },
-    }));
-
-  const [completedSteps, inProgress, mandatoryPending, recommended, badges, announcements, indicators, manager] =
+  const [onboarding, inProgress, mandatoryPending, recommended, badges, announcements, indicators, manager] =
     await Promise.all([
-      track
-        ? db.onboardingProgress.count({ where: { userId: user.id, stepId: { in: track.steps.map((s) => s.id) } } })
-        : Promise.resolve(0),
+      getUserOnboarding(user),
       db.enrollment.findMany({
         where: { userId: user.id, status: "IN_PROGRESS" },
         orderBy: { startedAt: "desc" },
@@ -67,10 +55,9 @@ export async function getCollaboratorDashboard(user: CurrentUser) {
       user.managerId ? db.user.findUnique({ where: { id: user.managerId }, select: { name: true } }) : null,
     ]);
 
-  const totalSteps = track?.steps.length ?? 0;
   return {
-    onboarding: track
-      ? { total: totalSteps, completed: completedSteps, percent: totalSteps ? Math.round((completedSteps / totalSteps) * 100) : 0 }
+    onboarding: onboarding
+      ? { total: onboarding.total, completed: onboarding.doneCount, percent: onboarding.percent, finished: onboarding.completed }
       : null,
     inProgress,
     mandatoryPending,

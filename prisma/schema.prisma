@@ -165,7 +165,7 @@ model Position {
   updatedAt    DateTime    @updatedAt
 
   users             User[]
-  onboardingTracks  OnboardingTrack[]
+  onboardingTrack   OnboardingTrack?
   learningPaths     LearningPath[]
   courseAssignments CourseAssignment[]
   careerEvents      CareerEvent[]
@@ -290,14 +290,16 @@ enum OnboardingStepType {
 }
 
 model OnboardingTrack {
-  id         String           @id @default(cuid())
-  name       String
-  isDefault  Boolean          @default(false)
-  positionId String?
-  position   Position?        @relation(fields: [positionId], references: [id], onDelete: SetNull)
-  steps      OnboardingStep[]
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  isDefault   Boolean          @default(false) // usada quando o cargo não tem trilha própria
+  active      Boolean          @default(true)
+  positionId  String?          @unique // no máximo uma trilha por cargo
+  position    Position?        @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  steps       OnboardingStep[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
 }
 
 model OnboardingStep {
@@ -308,8 +310,10 @@ model OnboardingStep {
   type        OnboardingStepType
   title       String
   description String?
+  content     Json? // texto (TipTap) exibido na própria etapa
+  linkUrl     String? // link complementar (etapas personalizadas)
   required    Boolean              @default(true)
-  refId       String? // curso ou avaliação vinculada
+  refId       String? // curso ou avaliação vinculada (Fases 3 e 4)
   progress    OnboardingProgress[]
 
   @@index([trackId, order])

@@ -5,8 +5,10 @@
  * o selo "Demonstrativo". Nenhum dado histórico real da Gigavale é inventado.
  * Não execute em produção (bloqueado, salvo SEED_ALLOW_PRODUCTION=1).
  */
-import { PrismaClient, type Role } from "@prisma/client";
+import { PrismaClient, type CompanySectionType, type Prisma, type Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { defaultStepRows } from "../src/lib/onboarding";
+import { textToRichDoc } from "../src/lib/rich-text";
 
 const db = new PrismaClient();
 
@@ -100,6 +102,68 @@ async function main() {
         authorId: ids.admin,
       },
     });
+  }
+
+  // ---------------------------------------------------------------- Fase 2
+
+  // Trilha padrão de integração (estrutura sugerida, não é dado histórico).
+  if ((await db.onboardingTrack.count()) === 0) {
+    await db.onboardingTrack.create({
+      data: {
+        name: "Integração Gigavale",
+        description: "Sua jornada de boas-vindas. Siga as etapas na ordem; os materiais continuam disponíveis no menu.",
+        isDefault: true,
+        steps: {
+          create: defaultStepRows().map((r) => ({ ...r, content: r.content as Prisma.InputJsonValue | undefined })),
+        },
+      },
+    });
+  }
+
+  // Conteúdo institucional DEMONSTRATIVO — nenhum fato histórico real é inventado.
+  if ((await db.companySection.count()) === 0) {
+    const demo = (type: CompanySectionType, title: string, text: string, order = 1) => ({
+      type,
+      title,
+      order,
+      published: true,
+      isDemo: true,
+      body: textToRichDoc(text) as Prisma.InputJsonValue,
+    });
+    const aviso = "Conteúdo demonstrativo. Substitua pelo texto oficial em Portal ADM › História e cultura.";
+    await db.companySection.createMany({
+      data: [
+        demo("HISTORY", "Como tudo começou", `${aviso}\n\nUse esta seção para contar a origem da Gigavale Atacado, quem fundou a empresa e o contexto da época.`),
+        demo("HISTORY", "Crescimento", `${aviso}\n\nDescreva aqui as principais fases de crescimento, novas unidades e conquistas.`, 2),
+        demo("MISSION", "Missão", `${aviso}\n\nA missão oficial da empresa será exibida aqui.`),
+        demo("VISION", "Visão", `${aviso}\n\nA visão oficial da empresa será exibida aqui.`),
+        demo("PURPOSE", "Propósito", `${aviso}\n\nO propósito oficial da empresa será exibido aqui.`),
+        demo("VALUES", "Nossos valores", `${aviso}\n\nListe aqui os valores oficiais da Gigavale.`),
+        demo("CULTURE", "Nosso jeito de trabalhar", `${aviso}\n\nApresente rituais, comportamentos esperados e o que torna a cultura da Gigavale única.`),
+      ],
+    });
+  }
+  if ((await db.timelineEvent.count()) === 0) {
+    await db.timelineEvent.createMany({
+      data: [
+        { date: new Date("2000-01-01T00:00:00Z"), title: "Exemplo de marco: fundação", description: "Marco demonstrativo. Cadastre as datas reais em Portal ADM › História e cultura › Linha do tempo.", highlight: true, published: true, isDemo: true },
+        { date: new Date("2015-01-01T00:00:00Z"), title: "Exemplo de marco: expansão", description: "Marco demonstrativo.", published: true, isDemo: true },
+        { date: new Date("2026-01-01T00:00:00Z"), title: "Exemplo de marco: lançamento do GV SPARK", description: "Marco demonstrativo.", published: true, isDemo: true },
+      ],
+    });
+  }
+
+  // Organograma demonstrativo a partir dos usuários demonstrativos.
+  if ((await db.orgPosition.count()) === 0) {
+    const pos = (title: string, userId: string | null, departmentId: string | null, parentId: string | null, order: number, responsibilities?: string) =>
+      db.orgPosition.create({ data: { title, userId, departmentId, parentId, order, responsibilities, isDemo: true } });
+    const dir = await pos("Diretoria", ids.admin, dep["Diretoria"], null, 1, "Responsabilidades demonstrativas: direção geral da empresa.");
+    const com = await pos("Gerente comercial", ids.gestor, dep["Comercial"], dir.id, 1, "Responsabilidades demonstrativas: liderar a equipe de vendas.");
+    await pos("Vendedor(a) interno(a)", ids.colaborador, dep["Comercial"], com.id, 1, "Responsabilidades demonstrativas: atendimento e vendas internas.");
+    await pos("Vendedor(a) externo(a)", null, dep["Comercial"], com.id, 2, "Posição vaga demonstrativa.");
+    await pos("Analista de treinamento", ids.instrutor, dep["Recursos Humanos"], dir.id, 2, "Responsabilidades demonstrativas: treinamentos e integração.");
+    const log = await pos("Supervisor(a) de logística", null, dep["Logística"], dir.id, 3, "Posição vaga demonstrativa.");
+    await pos("Conferente", ids.colaborador2, dep["Logística"], log.id, 1, "Responsabilidades demonstrativas: conferência de mercadorias.");
   }
 
   console.log("Seed demonstrativo concluído.");

@@ -42,3 +42,17 @@ export function parseDateInput(value: string | null | undefined): Date | null {
 export function toDateInput(d: Date | null | undefined): string {
   return d ? d.toISOString().slice(0, 10) : "";
 }
+
+// Datas "até o dia X" (inclusive) no horário de Brasília (UTC-3):
+// guardamos o instante 00:00 do dia seguinte em São Paulo.
+const END_OF_DAY_SP_MS = 27 * 3600_000;
+
+/** Data do formulário (00:00 UTC) → fim do dia em São Paulo. */
+export function endOfDaySaoPaulo(day: Date): Date {
+  return new Date(day.getTime() + END_OF_DAY_SP_MS);
+}
+
+/** Inverso de endOfDaySaoPaulo, para exibir/editar o dia escolhido. */
+export function dayFromEndOfDaySaoPaulo(instant: Date): Date {
+  return new Date(instant.getTime() - END_OF_DAY_SP_MS);
+}

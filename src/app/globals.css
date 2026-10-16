@@ -54,3 +54,54 @@
     *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
   }
 }
+
+/* Editor de texto formatado (TipTap) */
+@layer components {
+  .rich-editor .ProseMirror > * + * { margin-top: 0.75em; }
+  .rich-editor .ProseMirror h2 { @apply text-lg font-bold text-navy-900; }
+  .rich-editor .ProseMirror h3 { @apply text-base font-semibold text-navy-900; }
+  .rich-editor .ProseMirror ul { @apply list-disc pl-6; }
+  .rich-editor .ProseMirror ol { @apply list-decimal pl-6; }
+  .rich-editor .ProseMirror blockquote { @apply border-l-4 border-spark-500 bg-spark-50 py-1 pl-4 italic; }
+  .rich-editor .ProseMirror a { @apply text-navy-700 underline; }
+  .rich-editor .ProseMirror hr { @apply my-4 border-border; }
+  .rich-editor .ProseMirror p.is-editor-empty:first-child::before,
+  .rich-editor .ProseMirror:has(> p:only-child:empty)::before {
+    content: attr(data-placeholder);
+    @apply pointer-events-none float-left h-0 text-muted/70;
+  }
+}
+
+/* Organograma (árvore de cima para baixo com conectores) */
+@layer components {
+  .org-tree ul { @apply relative flex justify-center pt-6; }
+  .org-tree li { @apply relative flex flex-col items-center px-2 pt-6; }
+  .org-tree > ul { @apply pt-0; }
+  .org-tree > ul > li { @apply pt-0; }
+  /* linhas horizontais entre irmãos */
+  .org-tree li::before,
+  .org-tree li::after {
+    content: "";
+    @apply absolute top-0 h-6 w-1/2 border-t-2 border-navy-100;
+  }
+  .org-tree li::before { @apply right-1/2; }
+  .org-tree li::after { @apply left-1/2 border-l-2; }
+  .org-tree li:only-child::before,
+  .org-tree li:only-child::after { @apply hidden; }
+  .org-tree li:only-child { @apply pt-6; }
+  .org-tree > ul > li:only-child { @apply pt-0; }
+  .org-tree li:first-child::before,
+  .org-tree li:last-child::after { @apply border-t-0; }
+  .org-tree li:last-child::before { @apply rounded-tr-lg border-r-2; }
+  .org-tree li:first-child::after { @apply rounded-tl-lg; }
+  /* linha vertical do pai para os filhos */
+  .org-tree ul ul::before {
+    content: "";
+    @apply absolute left-1/2 top-0 h-6 border-l-2 border-navy-100;
+  }
+  .org-tree li:only-child > .org-card-wrap::before {
+    content: "";
+    @apply absolute -top-6 left-1/2 h-6 border-l-2 border-navy-100;
+  }
+  .org-tree > ul > li:only-child > .org-card-wrap::before { @apply hidden; }
+}
