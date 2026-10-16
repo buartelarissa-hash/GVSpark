@@ -2,7 +2,7 @@ import "server-only";
 import { Prisma } from "@prisma/client";
 import { db } from "@/server/db";
 import { audit } from "./audit";
-import { ServiceError } from "./users";
+import { ServiceError } from "./errors";
 import type { CurrentUser } from "@/server/auth/current-user";
 
 type DepartmentInput = { name: string; description: string | null; parentId: string | null; headId: string | null };

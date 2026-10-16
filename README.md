@@ -89,6 +89,36 @@ O seed demonstrativo não deve ser usado em produção. Para criar o primeiro ad
 - **Fotos:** o ADM ou o gestor trocam a foto na ficha do colaborador; o próprio colaborador troca a sua em "Meu perfil".
 - O seed cria conteúdo **demonstrativo** (com o selo) para a história, a linha do tempo e o organograma. Ao editar e salvar uma seção, o selo é removido.
 
+## GV Spark Academy (Fase 3)
+
+- **Portal ADM › Cursos e treinamentos**
+  - Cadastro completo do curso: capa, categoria, marca, instrutor, público-alvo, duração, carga horária, nível, obrigatório, data de publicação, prazo e status.
+  - Módulos e aulas reordenáveis com arrastar e soltar (inclusive pelo teclado).
+  - Atribuição para todos, para um departamento, para um cargo ou para colaboradores selecionados.
+  - Abas **Categorias** e **Trilhas de aprendizagem**. As trilhas atribuem cursos automaticamente por cargo.
+- **Editor de aulas:** blocos de texto formatado, imagem, vídeo enviado, vídeo do YouTube/Vimeo, PDF, apresentação, link, atividade e material complementar.
+  - Os blocos podem ser duplicados, reordenados e excluídos.
+  - A aula pode ficar como rascunho ou ser publicada, e é possível pré-visualizar antes de publicar.
+- **Marcas parceiras:** logo, apresentação, categorias de produtos e materiais técnicos (arquivos, links e vídeos).
+- **Para o colaborador:**
+  - Catálogo com busca e filtros, e a área "Meus cursos".
+  - Página do curso e visualizador de aulas com navegação e "Marcar aula como concluída".
+  - Progresso por curso.
+  - A conclusão do curso conclui a etapa de treinamento da integração vinculada a ele.
+- **Instrutor:** gerencia apenas os cursos sob sua responsabilidade.
+
+### Arquivos e vídeos em produção (armazenamento na nuvem)
+
+1. Crie um bucket **privado** num serviço compatível com S3. O Cloudflare R2 é recomendado, porque não cobra pelo download dos vídeos.
+2. Preencha `STORAGE_DRIVER="s3"` e as variáveis `S3_*` (veja `.env.example`).
+3. Configure o **CORS** do bucket para aceitar `PUT` vindo do domínio do GV SPARK. Os arquivos sobem direto do navegador para o bucket. Exemplo para o R2:
+   ```json
+   [{ "AllowedOrigins": ["https://seu-dominio.com.br"], "AllowedMethods": ["PUT"], "AllowedHeaders": ["Content-Type"], "MaxAgeSeconds": 3600 }]
+   ```
+4. O GV SPARK confere o tamanho e o conteúdo real de cada arquivo depois do envio. Para assistir ou baixar, a pessoa precisa estar logada e ter acesso ao curso; o sistema então gera um link que expira em 5 minutos.
+
+Limites: imagem até 5 MB, PDF até 50 MB, apresentação até 150 MB, documento até 50 MB e vídeo até 1 GB (ajustável com `MAX_VIDEO_MB`).
+
 ## Identidade visual
 
 - Cores: variáveis globais em `src/app/globals.css`. Azul `#023F88` e amarelo `#FFCB05` foram extraídos da logo oficial da Gigavale; o menu usa o azul-marinho `#08234A`.

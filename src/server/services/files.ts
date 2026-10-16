@@ -3,10 +3,11 @@ import { createHash, randomBytes } from "node:crypto";
 import { db } from "@/server/db";
 import { storage } from "@/server/storage/storage";
 import { safeFileName, validateImage } from "@/lib/file-validation";
-import { ServiceError } from "./users";
+import { ServiceError } from "./errors";
 import type { CurrentUser } from "@/server/auth/current-user";
 
-export const fileUrl = (id: string) => `/api/arquivos/${id}`;
+export { fileUrl } from "@/lib/file-url";
+import { fileUrl } from "@/lib/file-url";
 
 /** Extrai o id de um FileAsset de uma URL interna (/api/arquivos/<id>). */
 export function fileIdFromUrl(url: string | null | undefined): string | null {

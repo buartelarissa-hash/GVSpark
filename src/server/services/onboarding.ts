@@ -2,7 +2,7 @@ import "server-only";
 import { Prisma, type OnboardingStepType } from "@prisma/client";
 import { db } from "@/server/db";
 import { audit } from "./audit";
-import { ServiceError } from "./users";
+import { ServiceError } from "./errors";
 import { canCompleteManually, computeOnboarding, defaultStepRows } from "@/lib/onboarding";
 import type { RichDoc } from "@/lib/rich-text";
 import type { CurrentUser } from "@/server/auth/current-user";
@@ -32,6 +32,7 @@ export async function trackForUser(user: { position: { id: string } | null }) {
 export async function getUserOnboarding(user: CurrentUser) {
   const track = await trackForUser(user);
   if (!track) return null;
+  await syncCourseSteps(user.id, track.steps);
   const progress = await db.onboardingProgress.findMany({
     where: { userId: user.id, stepId: { in: track.steps.map((s) => s.id) } },
     select: { stepId: true, completedAt: true },
@@ -39,6 +40,30 @@ export async function getUserOnboarding(user: CurrentUser) {
   const completedAt = new Map(progress.map((p) => [p.stepId, p.completedAt]));
   const summary = computeOnboarding(track.steps, new Set(completedAt.keys()));
   return { track, completedAt, ...summary };
+}
+
+/**
+ * Etapas de treinamento vinculadas a um curso são concluídas automaticamente
+ * quando o colaborador conclui o curso na Academy.
+ */
+async function syncCourseSteps(userId: string, steps: { id: string; type: string; refId: string | null }[]) {
+  const courseSteps = steps.filter((s) => s.type === "COURSE" && s.refId);
+  if (!courseSteps.length) return;
+  const completed = await db.enrollment.findMany({
+    where: { userId, status: "COMPLETED", courseId: { in: courseSteps.map((s) => s.refId!) } },
+    select: { courseId: true, completedAt: true },
+  });
+  const doneAt = new Map(completed.map((e) => [e.courseId, e.completedAt ?? new Date()]));
+  for (const s of courseSteps) {
+    const at = doneAt.get(s.refId!);
+    if (at) {
+      await db.onboardingProgress.upsert({
+        where: { userId_stepId: { userId, stepId: s.id } },
+        update: {},
+        create: { userId, stepId: s.id, completedAt: at },
+      });
+    }
+  }
 }
 
 /** Colaborador conclui uma etapa manual da própria trilha. */
@@ -108,6 +133,7 @@ export async function saveTrack(actor: CurrentUser, id: string | null, input: Tr
 }
 
 type StepInputData = {
+  refId: string | null;
   type: OnboardingStepType;
   title: string;
   description: string | null;

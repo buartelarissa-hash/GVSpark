@@ -1,6 +1,8 @@
 import "server-only";
 import { Prisma, type Role, type UserStatus } from "@prisma/client";
 import { db } from "@/server/db";
+import { ServiceError } from "./errors";
+import { applyAssignmentsForUser } from "./assignments";
 import { audit } from "./audit";
 import { generateTemporaryPassword, hashPassword } from "@/server/auth/password";
 import { destroyUserSessions } from "@/server/auth/session";
@@ -12,15 +14,7 @@ import type { CurrentUser } from "@/server/auth/current-user";
 
 export const PAGE_SIZE = 20;
 
-export class ServiceError extends Error {
-  constructor(
-    message: string,
-    public field?: string,
-  ) {
-    super(message);
-    this.name = "ServiceError";
-  }
-}
+export { ServiceError };
 
 /** Filtro Prisma que limita os usuários visíveis a quem consulta. */
 export function visibleUsersWhere(actor: Pick<CurrentUser, "id" | "role" | "headedDepartmentIds">): Prisma.UserWhereInput {
@@ -187,6 +181,7 @@ export async function createUser(actor: CurrentUser, input: UserFormInput) {
       );
       return created;
     });
+    await applyAssignmentsForUser(user.id);
     return { id: user.id, temporaryPassword };
   } catch (e) {
     throw uniqueViolation(e) ?? e;
@@ -226,6 +221,8 @@ export async function updateUser(actor: CurrentUser, id: string, input: UserForm
   }
   // Mudança de papel encerra sessões ativas, para que permissões antigas não persistam.
   if (before.role !== input.role) await destroyUserSessions(id);
+  // Novo departamento/cargo pode trazer cursos atribuídos e trilhas automáticas.
+  if (before.departmentId !== data.departmentId || before.positionId !== data.positionId) await applyAssignmentsForUser(id);
 }
 
 export async function setUserStatus(actor: CurrentUser, id: string, status: UserStatus) {

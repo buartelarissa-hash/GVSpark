@@ -6,6 +6,19 @@ export const prisma = new PrismaClient();
 export async function resetDb() {
   // Ordem respeita as chaves estrangeiras usadas nestes testes.
   await prisma.auditLog.deleteMany();
+  await prisma.lessonProgress.deleteMany();
+  await prisma.enrollment.deleteMany();
+  await prisma.courseAssignment.deleteMany();
+  await prisma.learningPathCourse.deleteMany();
+  await prisma.learningPath.deleteMany();
+  await prisma.lessonBlock.deleteMany();
+  await prisma.lesson.deleteMany();
+  await prisma.courseModule.deleteMany();
+  await prisma.brandMaterial.deleteMany();
+  await prisma.fileAsset.deleteMany();
+  await prisma.course.deleteMany();
+  await prisma.brand.deleteMany();
+  await prisma.courseCategory.deleteMany();
   await prisma.onboardingProgress.deleteMany();
   await prisma.onboardingStep.deleteMany();
   await prisma.onboardingTrack.deleteMany();

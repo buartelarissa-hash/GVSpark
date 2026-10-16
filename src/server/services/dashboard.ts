@@ -16,19 +16,29 @@ export async function getCollaboratorDashboard(user: CurrentUser) {
     await Promise.all([
       getUserOnboarding(user),
       db.enrollment.findMany({
-        where: { userId: user.id, status: "IN_PROGRESS" },
+        where: { userId: user.id, status: "IN_PROGRESS", course: { status: "PUBLISHED" } },
         orderBy: { startedAt: "desc" },
         take: 4,
         select: { id: true, course: { select: { id: true, title: true, slug: true } } },
       }),
       db.enrollment.findMany({
-        where: { userId: user.id, status: { not: "COMPLETED" }, course: { mandatory: true, status: "PUBLISHED" } },
+        where: {
+          userId: user.id,
+          status: { not: "COMPLETED" },
+          course: { status: "PUBLISHED", OR: [{ publishAt: null }, { publishAt: { lte: now } }] },
+          AND: [{ OR: [{ mandatory: true }, { course: { mandatory: true } }] }],
+        },
         orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }],
         take: 4,
         select: { id: true, dueDate: true, course: { select: { title: true, slug: true } } },
       }),
       db.course.findMany({
-        where: { status: "PUBLISHED", enrollments: { none: { userId: user.id } } },
+        where: {
+          status: "PUBLISHED",
+          restricted: false,
+          OR: [{ publishAt: null }, { publishAt: { lte: now } }],
+          enrollments: { none: { userId: user.id } },
+        },
         orderBy: { publishAt: "desc" },
         take: 3,
         select: { id: true, title: true, slug: true, durationMinutes: true, category: { select: { name: true } } },

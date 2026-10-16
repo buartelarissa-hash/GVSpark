@@ -107,8 +107,9 @@ O schema completo já está em `prisma/schema.prisma` e validado por migration, 
 | `/integracao` | Jornada de integração com progresso | 2 ✅ |
 | `/nossa-historia` | História, fundadores, linha do tempo, missão, visão, valores, vídeo, cultura | 2 ✅ |
 | `/organograma` | Organograma interativo (árvore e lista, busca, detalhes) | 2 ✅ |
-| `/academy`, `/academy/cursos/[slug]`, `/academy/aulas/[id]` | Biblioteca, curso, visualizador de aula | 3 |
-| `/academy/marcas`, `/academy/marcas/[slug]` | Marcas parceiras | 3 |
+| `/academy`, `/academy/meus-cursos` | Catálogo (categorias, busca, filtros) e meus cursos | 3 ✅ |
+| `/academy/cursos/[slug]`, `/academy/cursos/[slug]/aulas/[id]` | Página do curso e visualizador de aulas com progresso | 3 ✅ |
+| `/academy/marcas`, `/academy/marcas/[slug]` | Marcas parceiras, treinamentos e materiais | 3 ✅ |
 | `/academy/avaliacoes/[id]` | Realização de prova | 4 |
 | `/historico` | Meu histórico acadêmico | 4 |
 | `/certificados`, `/certificados/[codigo]` | Certificados e PDF | 4 |
@@ -126,7 +127,9 @@ O schema completo já está em `prisma/schema.prisma` e validado por migration, 
 | `/adm/historia` (+ `/linha-do-tempo`, `/comunicados`, `/secoes/...`) | Conteúdo institucional com editor visual, linha do tempo com fotos, comunicados | 2 ✅ |
 | `/adm/organograma` | Posições (vagas ou ocupadas), mover, reordenar, desativar, importar dos cadastros | 2 ✅ |
 | `/adm/integracao`, `/adm/integracao/[id]` | Trilhas por cargo, etapas, andamento dos colaboradores | 2 ✅ |
-| `/adm/cursos`, `/adm/aulas`, `/adm/marcas` | Academy Builder | 3 |
+| `/adm/cursos` (+ `/novo`, `/categorias`, `/trilhas`, `/[id]`, `/[id]/dados`, `/[id]/atribuicoes`) | Cursos, estrutura com arrastar e soltar, atribuições, categorias, trilhas por cargo | 3 ✅ |
+| `/adm/aulas`, `/adm/aulas/[id]` | Editor de aulas por blocos, com pré-visualização | 3 ✅ |
+| `/adm/marcas` (+ `/nova`, `/[id]`) | Marcas parceiras e materiais técnicos | 3 ✅ |
 | `/adm/questoes`, `/adm/avaliacoes`, `/adm/notas`, `/adm/certificados` | Avaliações, correção, liberação, novas tentativas | 4 |
 | `/adm/jornada`, `/adm/metas`, `/adm/duvidas` | Desenvolvimento | 5 |
 | `/adm/relatorios` | Relatórios e exportações | 6 |
@@ -137,7 +140,7 @@ As rotas das fases futuras já existem, protegidas pela permissão correta, e mo
 
 1. **Fundação** ✅: estrutura, identidade visual, login, banco, perfis e permissões, layout dos dois portais, gestão de colaboradores, departamentos e cargos, auditoria.
 2. **Integração** ✅: editor de história e cultura (TipTap), linha do tempo, organograma interativo com posições vagas, trilha de integração por cargo, comunicados, fotos dos colaboradores.
-3. **Academy**: categorias, marcas, Academy Builder (curso → módulos → aulas → blocos com arrastar e soltar), upload seguro (driver local/S3), visualizador de aulas, progresso, atribuições e trilhas automáticas por cargo.
+3. **Academy** ✅: categorias, marcas, Academy Builder (curso → módulos → aulas → blocos com arrastar e soltar), upload seguro (driver local/S3), visualizador de aulas, progresso, atribuições e trilhas automáticas por cargo.
 4. **Avaliações**: banco de questões, editor de provas, realização com tempo-limite, correção manual, ajuste com justificativa, liberação, autorização de nova tentativa, histórico acadêmico com gráficos, certificados em PDF com código de validação. Testes obrigatórios do bloqueio de nota e da regra de nova tentativa.
 5. **Desenvolvimento**: jornada profissional, PDI, competências, indicadores por cargo, metas mensais, medalhas, central de dúvidas e FAQ.
 6. **Gestão**: relatórios com exportação (CSV/XLSX), indicadores, consulta de auditoria com filtros, política de retenção, revisão de segurança e testes finais (E2E).
@@ -151,3 +154,12 @@ As rotas das fases futuras já existem, protegidas pela permissão correta, e mo
   - Os materiais de consulta continuam livres no menu.
   - Cada cargo pode ter a própria trilha; quem não tem segue a trilha padrão.
 - **Organograma:** ao desativar uma posição, as subordinadas sobem um nível. "Importar dos cadastros" cria posições seguindo o gestor de cada colaborador, sem duplicar.
+- **Arquivos (Fase 3):** o upload acontece em três etapas.
+  1. `startUpload` valida o nome, o tipo permitido e o tamanho, e reserva o arquivo como PENDENTE.
+  2. O navegador envia o arquivo por `PUT`: para a URL assinada do S3/R2, ou para `/api/uploads/[token]` no driver local, que grava em streaming com limite de tamanho.
+  3. `finalizeUpload` confere o tamanho e os primeiros bytes. Se algo não bater, o arquivo é apagado.
+
+  Uploads abandonados expiram em 2 horas. Arquivos de curso guardam o `courseId`, e o download exige acesso ao curso. O driver local suporta `Range` (avançar e retroceder em vídeos); com S3, o download redireciona para uma URL assinada de 5 minutos.
+- **Visibilidade dos cursos:** um curso aparece para o colaborador quando está publicado, liberado pela data de publicação e é aberto no catálogo ou está atribuído a ele (cursos "restritos"). Quem gerencia o curso pode pré-visualizar rascunhos sem registrar progresso.
+- **Atribuições:** as regras (todos, departamento, cargo ou pessoa) e as trilhas por cargo são reaplicadas ao cadastrar uma pessoa ou mudar seu departamento ou cargo (`applyAssignmentsForUser`). Remover uma regra não apaga as matrículas já criadas.
+- **Integridade:** aulas e módulos já estudados não podem ser excluídos (é preciso despublicá-los). Uma aula só é publicada com conteúdo, e um curso só é publicado com ao menos uma aula publicada.

@@ -62,6 +62,7 @@ const stepSchema = z.object({
   title: z.string().trim().min(2, "Informe o título da etapa.").max(120),
   description: optionalText(500),
   linkUrl: optionalText(500),
+  refId: optionalId,
   required: checkbox,
 });
 
@@ -72,7 +73,9 @@ export async function saveStepAction(_prev: ActionState, fd: FormData): Promise<
     if (!parsed.success) return { errors: fieldErrors(parsed.error) };
     const { id: stepId, trackId, ...input } = parsed.data;
     if (input.linkUrl && !safeHref(input.linkUrl)) return { errors: { linkUrl: "Use um link completo, começando com https://" } };
-    await saveStep(actor, trackId, stepId, { ...input, content: parseRichDoc(fd.get("content") as string | null) });
+    // Só etapas de treinamento usam curso vinculado.
+    const refId = input.type === "COURSE" ? input.refId : null;
+    await saveStep(actor, trackId, stepId, { ...input, refId, content: parseRichDoc(fd.get("content") as string | null) });
     revalidateTracks(trackId);
     return { ok: true, message: "Etapa salva." };
   });

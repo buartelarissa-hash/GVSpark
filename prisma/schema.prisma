@@ -348,20 +348,42 @@ model CourseCategory {
 }
 
 model Brand {
-  id           String     @id @default(cuid())
-  name         String     @unique
-  slug         String     @unique
+  id           String          @id @default(cuid())
+  name         String          @unique
+  slug         String          @unique
   logoUrl      String?
   summary      String?
   presentation Json? // documento TipTap
   website      String?
   productLines String[]
-  active       Boolean    @default(true)
-  isDemo       Boolean    @default(false)
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
+  active       Boolean         @default(true)
+  isDemo       Boolean         @default(false)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
   courses      Course[]
   questions    Question[]
+  materials    BrandMaterial[]
+}
+
+enum BrandMaterialKind {
+  FILE // arquivo enviado (PDF, apresentação, vídeo...)
+  LINK // link externo
+  VIDEO // vídeo incorporado (YouTube/Vimeo)
+}
+
+model BrandMaterial {
+  id        String            @id @default(cuid())
+  brandId   String
+  brand     Brand             @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  title     String
+  kind      BrandMaterialKind
+  url       String?
+  fileId    String?
+  file      FileAsset?        @relation(fields: [fileId], references: [id], onDelete: SetNull)
+  order     Int               @default(0)
+  createdAt DateTime          @default(now())
+
+  @@index([brandId, order])
 }
 
 enum CourseStatus {
@@ -388,6 +410,7 @@ model Course {
   workloadHours   Decimal?        @db.Decimal(6, 2) // carga horária do certificado
   level           CourseLevel     @default(BASIC)
   mandatory       Boolean         @default(false)
+  restricted      Boolean         @default(false) // true = só aparece para quem foi atribuído
   publishAt       DateTime?
   dueDays         Int? // prazo de conclusão após atribuição
   status          CourseStatus    @default(DRAFT)
@@ -409,6 +432,7 @@ model Course {
   pathCourses  LearningPathCourse[]
   assessments  Assessment[]
   certificates Certificate[]
+  fileAssets   FileAsset[]
 
   @@index([status])
   @@index([categoryId])
@@ -432,6 +456,7 @@ model Lesson {
   moduleId         String
   module           CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
   title            String
+  description      String?
   order            Int
   estimatedMinutes Int?
   published        Boolean          @default(false)
@@ -468,17 +493,31 @@ model LessonBlock {
   @@index([lessonId, order])
 }
 
+enum FileStatus {
+  PENDING // upload iniciado, aguardando confirmação
+  READY
+}
+
 model FileAsset {
-  id           String        @id @default(cuid())
-  storageKey   String        @unique
-  originalName String
-  mimeType     String
-  sizeBytes    Int
-  checksum     String?
-  uploadedById String?
-  uploadedBy   User?         @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
-  createdAt    DateTime      @default(now())
-  blocks       LessonBlock[]
+  id             String          @id @default(cuid())
+  storageKey     String          @unique
+  originalName   String
+  mimeType       String
+  sizeBytes      Int
+  checksum       String?
+  status         FileStatus      @default(READY)
+  uploadToken    String?         @unique // token de upload direto (driver local)
+  expiresAt      DateTime? // validade do upload pendente
+  // Arquivo de curso: só quem tem acesso ao curso pode baixar. Nulo = qualquer usuário logado.
+  courseId       String?
+  course         Course?         @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  uploadedById   String?
+  uploadedBy     User?           @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+  createdAt      DateTime        @default(now())
+  blocks         LessonBlock[]
+  brandMaterials BrandMaterial[]
+
+  @@index([status, expiresAt])
 }
 
 enum AssignmentTarget {
@@ -500,6 +539,7 @@ model CourseAssignment {
   userId       String?
   user         User?            @relation("AssignmentTarget", fields: [userId], references: [id], onDelete: Cascade)
   dueDate      DateTime?
+  mandatory    Boolean          @default(true)
   assignedById String?
   assignedBy   User?            @relation("AssignmentAuthor", fields: [assignedById], references: [id], onDelete: SetNull)
   createdAt    DateTime         @default(now())
@@ -537,17 +577,19 @@ enum EnrollmentStatus {
 }
 
 model Enrollment {
-  id          String           @id @default(cuid())
-  userId      String
-  user        User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  courseId    String
-  course      Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  status      EnrollmentStatus @default(NOT_STARTED)
-  source      String? // "assignment", "path", "self"
-  dueDate     DateTime?
-  startedAt   DateTime?
-  completedAt DateTime?
-  createdAt   DateTime         @default(now())
+  id           String           @id @default(cuid())
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId     String
+  course       Course           @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  status       EnrollmentStatus @default(NOT_STARTED)
+  source       String? // "assignment", "path", "self"
+  mandatory    Boolean          @default(false) // atribuído como obrigatório
+  lastLessonId String? // última aula aberta (para "continuar")
+  dueDate      DateTime?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime         @default(now())
 
   @@unique([userId, courseId])
   @@index([courseId, status])

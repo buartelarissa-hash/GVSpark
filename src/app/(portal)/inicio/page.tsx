@@ -27,7 +27,7 @@ import { Badge, DemoBadge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { EmptyState } from "@/components/ui/empty-state";
 import { firstName } from "@/lib/utils";
-import { formatDate, tenure } from "@/lib/format";
+import { dayFromEndOfDaySaoPaulo, formatDate, tenure } from "@/lib/format";
 
 export const metadata: Metadata = { title: "Início" };
 
@@ -139,7 +139,11 @@ export default async function DashboardPage() {
               {data.inProgress.length ? (
                 <ul className="divide-y divide-border">
                   {data.inProgress.map((e) => (
-                    <li key={e.id} className="px-5 py-3 text-sm font-medium">{e.course.title}</li>
+                    <li key={e.id}>
+                      <Link href={`/academy/cursos/${e.course.slug}`} className="flex items-center justify-between gap-3 px-5 py-3 text-sm font-medium hover:bg-navy-50/50">
+                        {e.course.title} <ArrowRight className="size-4 text-muted" aria-hidden="true" />
+                      </Link>
+                    </li>
                   ))}
                 </ul>
               ) : (
@@ -156,8 +160,8 @@ export default async function DashboardPage() {
                 <ul className="divide-y divide-border">
                   {data.mandatoryPending.map((e) => (
                     <li key={e.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
-                      <span className="font-medium">{e.course.title}</span>
-                      {e.dueDate && <Badge tone="warning">até {formatDate(e.dueDate)}</Badge>}
+                      <Link href={`/academy/cursos/${e.course.slug}`} className="font-medium hover:underline">{e.course.title}</Link>
+                      {e.dueDate && <Badge tone="warning">até {formatDate(dayFromEndOfDaySaoPaulo(e.dueDate))}</Badge>}
                     </li>
                   ))}
                 </ul>
@@ -175,9 +179,11 @@ export default async function DashboardPage() {
             {data.recommended.length ? (
               <ul className="grid gap-4 p-5 sm:grid-cols-3">
                 {data.recommended.map((c) => (
-                  <li key={c.id} className="rounded-lg border border-border p-4">
-                    {c.category && <Badge>{c.category.name}</Badge>}
-                    <p className="mt-2 text-sm font-semibold">{c.title}</p>
+                  <li key={c.id}>
+                    <Link href={`/academy/cursos/${c.slug}`} className="block h-full rounded-lg border border-border p-4 hover:border-spark-500">
+                      {c.category && <Badge>{c.category.name}</Badge>}
+                      <p className="mt-2 text-sm font-semibold">{c.title}</p>
+                    </Link>
                   </li>
                 ))}
               </ul>

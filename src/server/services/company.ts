@@ -2,7 +2,7 @@ import "server-only";
 import type { CompanySectionType, Prisma } from "@prisma/client";
 import { db } from "@/server/db";
 import { audit } from "./audit";
-import { ServiceError } from "./users";
+import { ServiceError } from "./errors";
 import { formFile, saveImageUpload } from "./files";
 import { parseVideoUrl } from "@/lib/video-embed";
 import type { RichDoc } from "@/lib/rich-text";

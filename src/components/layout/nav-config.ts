@@ -33,6 +33,8 @@ export type NavItem = {
   /** Fase do roadmap em que a funcionalidade será entregue (ausente = disponível). */
   phase?: number;
   exact?: boolean;
+  /** Outros prefixos de rota que também marcam o item como ativo. */
+  alsoActive?: string[];
 };
 
 export type NavGroup = { label?: string; items: NavItem[] };
@@ -50,8 +52,8 @@ export const COLABORADOR_NAV: NavGroup[] = [
   {
     label: "GV Spark Academy",
     items: [
-      { label: "Cursos", href: "/academy", icon: GraduationCap, phase: 3, exact: true },
-      { label: "Marcas parceiras", href: "/academy/marcas", icon: Handshake, phase: 3 },
+      { label: "Cursos", href: "/academy", icon: GraduationCap, exact: true, alsoActive: ["/academy/cursos", "/academy/meus-cursos"] },
+      { label: "Marcas parceiras", href: "/academy/marcas", icon: Handshake },
       { label: "Central de dúvidas", href: "/duvidas", icon: MessageCircleQuestion, phase: 5 },
     ],
   },
@@ -83,9 +85,9 @@ export const ADMIN_NAV: NavGroup[] = [
   {
     label: "Academy",
     items: [
-      { label: "Cursos e treinamentos", href: "/adm/cursos", icon: BookOpen, anyOf: COURSES, phase: 3 },
-      { label: "Editor de aulas", href: "/adm/aulas", icon: PenSquare, anyOf: COURSES, phase: 3 },
-      { label: "Marcas parceiras", href: "/adm/marcas", icon: Handshake, anyOf: ["courses.manage"], phase: 3 },
+      { label: "Cursos e treinamentos", href: "/adm/cursos", icon: BookOpen, anyOf: COURSES },
+      { label: "Editor de aulas", href: "/adm/aulas", icon: PenSquare, anyOf: COURSES },
+      { label: "Marcas parceiras", href: "/adm/marcas", icon: Handshake, anyOf: ["courses.manage"] },
       { label: "Banco de questões", href: "/adm/questoes", icon: FileQuestion, anyOf: ["questions.manage"], phase: 4 },
       { label: "Avaliações e correções", href: "/adm/avaliacoes", icon: ClipboardCheck, anyOf: ["assessments.grade"], phase: 4 },
       { label: "Histórico de notas", href: "/adm/notas", icon: History, anyOf: ["grades.view"], phase: 4 },

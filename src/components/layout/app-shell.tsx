@@ -19,8 +19,9 @@ export type ShellUser = {
   subtitle: string;
 };
 
-function isActive(pathname: string, href: string, exact?: boolean) {
-  return exact ? pathname === href : pathname === href || pathname.startsWith(href + "/");
+function isActive(pathname: string, item: { href: string; exact?: boolean; alsoActive?: string[] }) {
+  const match = (h: string, exact?: boolean) => (exact ? pathname === h : pathname === h || pathname.startsWith(h + "/"));
+  return match(item.href, item.exact) || (item.alsoActive ?? []).some((h) => match(h));
 }
 
 function SidebarNav({ groups, onNavigate }: { groups: NavGroup[]; onNavigate?: () => void }) {
@@ -34,7 +35,7 @@ function SidebarNav({ groups, onNavigate }: { groups: NavGroup[]; onNavigate?: (
           )}
           <ul className="space-y-0.5">
             {group.items.map((item) => {
-              const active = isActive(pathname, item.href, item.exact);
+              const active = isActive(pathname, item);
               return (
                 <li key={item.href}>
                   <Link

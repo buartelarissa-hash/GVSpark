@@ -166,6 +166,91 @@ async function main() {
     await pos("Conferente", ids.colaborador2, dep["Logística"], log.id, 1, "Responsabilidades demonstrativas: conferência de mercadorias.");
   }
 
+  // ---------------------------------------------------------------- Fase 3 — Academy
+
+  // Categorias e marcas indicadas no briefing (sem conteúdo inventado).
+  const categories: [string, string, string][] = [
+    ["Adesivos e selantes", "adesivos-e-selantes", "droplets"],
+    ["Elétrica", "eletrica", "zap"],
+    ["Hidráulica", "hidraulica", "shower"],
+    ["Tintas", "tintas", "paint"],
+    ["Ferramentas", "ferramentas", "hammer"],
+    ["Abrasivos", "abrasivos", "disc"],
+    ["Acessórios para construção", "acessorios-para-construcao", "package"],
+  ];
+  for (const [i, [name, slug, icon]] of categories.entries()) {
+    await db.courseCategory.upsert({ where: { slug }, update: {}, create: { name, slug, icon, order: i + 1 } });
+  }
+  for (const name of ["Tekbond", "Norton", "Pluzie", "Novatintas", "Compel", "Infibra"]) {
+    const slug = name.toLowerCase();
+    await db.brand.upsert({ where: { slug }, update: {}, create: { name, slug, isDemo: true } });
+  }
+
+  // Curso demonstrativo (estrutura do exemplo do briefing; textos marcados como demonstrativos).
+  if (!(await db.course.findUnique({ where: { slug: "especialista-em-adesivos" } }))) {
+    const cat = await db.courseCategory.findUniqueOrThrow({ where: { slug: "adesivos-e-selantes" } });
+    const text = (t: string) => ({ doc: textToRichDoc(`Conteúdo demonstrativo. ${t}`) }) as unknown as Prisma.InputJsonValue;
+    const modules: [string, string[]][] = [
+      ["Conhecendo a marca", ["Apresentação do curso", "Histórico e posicionamento"]],
+      ["Características dos produtos", ["Tipos de adesivos", "Selantes e suas aplicações"]],
+      ["Aplicações práticas", ["Preparação de superfícies", "Erros comuns na aplicação"]],
+      ["Técnicas de venda", ["Entendendo a necessidade do cliente", "Argumentos de venda"]],
+      ["Avaliação final", ["Revisão do conteúdo"]],
+    ];
+    const course = await db.course.create({
+      data: {
+        title: "Especialista em Adesivos",
+        slug: "especialista-em-adesivos",
+        description: "Curso demonstrativo do GV SPARK. Substitua pelo conteúdo oficial ou crie novos cursos no Portal ADM.",
+        categoryId: cat.id,
+        instructorId: ids.instrutor,
+        createdById: ids.admin,
+        targetAudience: "Vendedores internos e externos",
+        durationMinutes: 90,
+        workloadHours: 2,
+        level: "BASIC",
+        mandatory: true,
+        status: "PUBLISHED",
+        publishAt: new Date(),
+        dueDays: 30,
+        isDemo: true,
+        modules: {
+          create: modules.map(([title, lessons], i) => ({
+            title,
+            order: i + 1,
+            lessons: {
+              create: lessons.map((lt, j) => ({
+                title: lt,
+                order: j + 1,
+                published: true,
+                estimatedMinutes: 10,
+                blocks: {
+                  create: [
+                    { order: 1, type: "RICH_TEXT" as const, content: text(`Esta aula ("${lt}") mostra como os blocos de conteúdo aparecem para o colaborador. Edite-a no Portal ADM › Editor de aulas.`) },
+                    ...(j === 0 && i === 0
+                      ? [{ order: 2, type: "ACTIVITY" as const, content: { title: "Atividade de exemplo", instructions: textToRichDoc("Conteúdo demonstrativo. Liste três produtos da categoria que você já vendeu e para quais aplicações.") } as unknown as Prisma.InputJsonValue }]
+                      : []),
+                  ],
+                },
+              })),
+            },
+          })),
+        },
+      },
+    });
+    // Atribuído ao Comercial (obrigatório) para demonstrar atribuições e prazos.
+    await db.courseAssignment.create({
+      data: { courseId: course.id, targetType: "DEPARTMENT", departmentId: dep["Comercial"], mandatory: true, assignedById: ids.admin },
+    });
+    const comercial = await db.user.findMany({ where: { departmentId: dep["Comercial"], status: "ACTIVE" }, select: { id: true } });
+    await db.enrollment.createMany({
+      data: comercial.map((u) => ({ userId: u.id, courseId: course.id, source: "assignment", mandatory: true, dueDate: new Date(Date.now() + 30 * 86_400_000) })),
+      skipDuplicates: true,
+    });
+    // Etapa de treinamento da integração passa a usar este curso.
+    await db.onboardingStep.updateMany({ where: { type: "COURSE", refId: null }, data: { refId: course.id } });
+  }
+
   console.log("Seed demonstrativo concluído.");
   console.log(`Usuários (senha ${DEMO_PASSWORD}):`);
   for (const u of users) console.log(`  ${u.role.padEnd(12)} ${u.username}`);

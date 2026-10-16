@@ -86,6 +86,7 @@ export type StepData = {
   description: string | null;
   content: unknown;
   linkUrl: string | null;
+  refId: string | null;
   required: boolean;
 };
 
@@ -93,13 +94,13 @@ const TYPE_HINTS: Partial<Record<OnboardingStepType, string>> = {
   HISTORY: "Leva o colaborador à página Nossa história.",
   VALUES: "Leva à seção de missão, visão e valores.",
   ORGCHART: "Leva ao organograma.",
-  COURSE: "Concluída automaticamente ao terminar o curso (disponível com a Academy, Fase 3).",
+  COURSE: "Concluída automaticamente quando o colaborador concluir o curso vinculado.",
   ASSESSMENT: "Concluída automaticamente quando a avaliação for aprovada (Fase 4).",
   CONCLUSION: "Concluída automaticamente ao terminar as etapas obrigatórias anteriores.",
   CUSTOM: "Etapa livre, com texto e link opcional.",
 };
 
-export function StepDialog({ trackId, step }: { trackId: string; step?: StepData }) {
+export function StepDialog({ trackId, step, courses }: { trackId: string; step?: StepData; courses: Opt[] }) {
   const [type, setType] = React.useState<OnboardingStepType>(step?.type ?? "CUSTOM");
   return (
     <FormDialog
@@ -140,6 +141,16 @@ export function StepDialog({ trackId, step }: { trackId: string; step?: StepData
           <Field label="Conteúdo da etapa (opcional)" htmlFor="st-content">
             <RichTextEditor id="st-content" name="content" defaultValue={step?.content ?? undefined} minHeight="8rem" />
           </Field>
+          {type === "COURSE" && (
+            <Field label="Curso vinculado" htmlFor="st-course" error={e.refId} hint="Sem curso vinculado, a etapa fica apenas informativa.">
+              <Select id="st-course" name="refId" defaultValue={step?.refId ?? ""}>
+                <option value="">Nenhum</option>
+                {courses.map((c) => (
+                  <option key={c.id} value={c.id}>{c.label}</option>
+                ))}
+              </Select>
+            </Field>
+          )}
           {type === "CUSTOM" && (
             <Field label="Link complementar (opcional)" htmlFor="st-link" error={e.linkUrl}>
               <Input id="st-link" name="linkUrl" type="url" defaultValue={step?.linkUrl ?? ""} placeholder="https://" aria-invalid={!!e.linkUrl} />

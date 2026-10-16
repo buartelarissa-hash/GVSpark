@@ -28,10 +28,12 @@ export default async function TrackPage({ params }: { params: Promise<{ id: stri
     include: { steps: { orderBy: { order: "asc" } }, position: { select: { title: true } } },
   });
   if (!track) notFound();
-  const [positions, participants] = await Promise.all([
+  const [positions, participants, courses] = await Promise.all([
     db.position.findMany({ where: { active: true }, orderBy: { title: "asc" }, select: { id: true, title: true, department: { select: { name: true } } } }),
     trackParticipants(id),
+    db.course.findMany({ where: { status: { not: "ARCHIVED" } }, orderBy: { title: "asc" }, select: { id: true, title: true, status: true } }),
   ]);
+  const courseOpts = courses.map((c) => ({ id: c.id, label: c.status === "PUBLISHED" ? c.title : `${c.title} (não publicado)` }));
   const posOpts = positions.map((p) => ({ id: p.id, label: p.department ? `${p.title} (${p.department.name})` : p.title }));
 
   return (
@@ -80,7 +82,7 @@ export default async function TrackPage({ params }: { params: Promise<{ id: stri
               <CardTitle>Etapas</CardTitle>
               <CardDescription>As obrigatórias precisam ser concluídas na ordem.</CardDescription>
             </div>
-            <StepDialog trackId={track.id} />
+            <StepDialog trackId={track.id} courses={courseOpts} />
           </CardHeader>
           {track.steps.length ? (
             <ol className="divide-y divide-border">
@@ -111,7 +113,7 @@ export default async function TrackPage({ params }: { params: Promise<{ id: stri
                         <ArrowDown />
                       </Button>
                     </form>
-                    <StepDialog trackId={track.id} step={s} />
+                    <StepDialog trackId={track.id} step={s} courses={courseOpts} />
                     <ConfirmAction
                       trigger={<Trash2 />}
                       triggerLabel={`Excluir ${s.title}`}

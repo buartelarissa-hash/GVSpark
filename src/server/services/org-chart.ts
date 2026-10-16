@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/server/db";
 import { audit } from "./audit";
-import { ServiceError } from "./users";
+import { ServiceError } from "./errors";
 import { wouldCreateCycle } from "@/lib/org-tree";
 import type { CurrentUser } from "@/server/auth/current-user";
 

@@ -1,6 +1,6 @@
 import "server-only";
 import { AuthorizationError } from "@/server/auth/current-user";
-import { ServiceError } from "@/server/services/users";
+import { ServiceError } from "@/server/services/errors";
 import type { ActionState } from "@/lib/validation";
 
 /** Executa uma server action convertendo erros conhecidos em mensagens ao usuário. */

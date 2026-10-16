@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ArrowRight, Check, ExternalLink, Lock, PartyPopper, Rocket, Sparkles } from "lucide-react";
 import { requireUser } from "@/server/auth/current-user";
 import { getUserOnboarding } from "@/server/services/onboarding";
+import { db } from "@/server/db";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -23,6 +24,7 @@ const LINK_LABELS: Record<string, string> = {
   "/organograma": "Abrir o organograma",
   "/academy": "Ir para a Academy",
 };
+const linkLabel = (href: string) => LINK_LABELS[href] ?? (href.startsWith("/academy/cursos/") ? "Abrir o curso" : "Abrir");
 
 export default async function OnboardingPage() {
   const user = await requireUser();
@@ -40,6 +42,10 @@ export default async function OnboardingPage() {
   }
 
   const { track, states, completedAt } = data;
+  const refIds = track.steps.filter((s) => s.type === "COURSE" && s.refId).map((s) => s.refId!);
+  const courseSlugs = new Map(
+    (await db.course.findMany({ where: { id: { in: refIds } }, select: { id: true, slug: true } })).map((c) => [c.id, `/academy/cursos/${c.slug}`]),
+  );
   return (
     <>
       <PageHeader
@@ -69,7 +75,10 @@ export default async function OnboardingPage() {
         {track.steps.map((step, i) => {
           const state = states.get(step.id)!;
           const auto = AUTO_COMPLETED_TYPES.includes(step.type);
-          const link = (step.type === "CUSTOM" ? safeHref(step.linkUrl) : null) ?? STEP_TYPE_LINKS[step.type];
+          const link =
+            (step.type === "CUSTOM" ? safeHref(step.linkUrl) : null) ??
+            (step.type === "COURSE" && step.refId ? (courseSlugs.get(step.refId) ?? null) : null) ??
+            STEP_TYPE_LINKS[step.type];
           const isNext = data.nextStepId === step.id;
           return (
             <li key={step.id} className="relative pl-14">
@@ -110,7 +119,7 @@ export default async function OnboardingPage() {
                           </a>
                         ) : (
                           <Link href={link}>
-                            {LINK_LABELS[link] ?? "Abrir"} <ArrowRight />
+                            {linkLabel(link)} <ArrowRight />
                           </Link>
                         )}
                       </Button>
