@@ -6,7 +6,7 @@ beforeEach(resetDb);
 afterAll(() => prisma.$disconnect());
 
 describe("limite de tentativas de login", () => {
-  it("bloqueia após 5 falhas para o mesmo e-mail", async () => {
+  it("bloqueia após 5 falhas para o mesmo usuário", async () => {
     for (let i = 0; i < 4; i++) await recordLoginAttempt("a@teste.dev", "1.1.1.1", false);
     expect(await isLoginBlocked("a@teste.dev", "1.1.1.1")).toBe(false);
     await recordLoginAttempt("a@teste.dev", "1.1.1.1", false);
@@ -14,7 +14,7 @@ describe("limite de tentativas de login", () => {
     expect(await isLoginBlocked("b@teste.dev", "2.2.2.2")).toBe(false);
   });
 
-  it("um login bem-sucedido zera a contagem do e-mail", async () => {
+  it("um login bem-sucedido zera a contagem do usuário", async () => {
     for (let i = 0; i < 4; i++) await recordLoginAttempt("c@teste.dev", null, false);
     await recordLoginAttempt("c@teste.dev", null, true);
     await new Promise((r) => setTimeout(r, 5));
@@ -22,7 +22,7 @@ describe("limite de tentativas de login", () => {
     expect(await isLoginBlocked("c@teste.dev", null)).toBe(false);
   });
 
-  it("bloqueia um IP após 20 falhas, mesmo com e-mails diferentes", async () => {
+  it("bloqueia um IP após 20 falhas, mesmo com usuários diferentes", async () => {
     for (let i = 0; i < 20; i++) await recordLoginAttempt(`x${i}@teste.dev`, "9.9.9.9", false);
     expect(await isLoginBlocked("novo@teste.dev", "9.9.9.9")).toBe(true);
   });

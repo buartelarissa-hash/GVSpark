@@ -14,16 +14,19 @@ export function LoginForm({ next }: { next?: string }) {
     <form action={action} className="space-y-5" noValidate>
       {state.message && <Alert tone="danger">{state.message}</Alert>}
       {next && <input type="hidden" name="next" value={next} />}
-      <Field label="E-mail corporativo" htmlFor="email" error={state.errors?.email}>
+      <Field label="Usuário" htmlFor="username" error={state.errors?.username}>
         <Input
-          id="email"
-          name="email"
-          type="email"
+          id="username"
+          name="username"
+          type="text"
           autoComplete="username"
-          placeholder="nome@gigavale.com.br"
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          placeholder="ex.: joao.silva"
           required
           autoFocus
-          aria-invalid={!!state.errors?.email}
+          aria-invalid={!!state.errors?.username}
         />
       </Field>
       <Field label="Senha" htmlFor="password" error={state.errors?.password}>

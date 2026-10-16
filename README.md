@@ -43,12 +43,12 @@ npm run build && npm start   # produção
 
 Senha de todos: `Spark@2026`
 
-| Perfil | E-mail |
+| Perfil | Usuário |
 | --- | --- |
-| Administrador geral | `admin@gvspark.dev` |
-| Gestor | `gestor@gvspark.dev` |
-| Instrutor | `instrutor@gvspark.dev` |
-| Colaborador | `colaborador@gvspark.dev`, `colaborador2@gvspark.dev` |
+| Administrador geral | `admin` |
+| Gestor | `gestor` |
+| Instrutor | `instrutor` |
+| Colaborador | `colaborador`, `colaborador2` |
 
 Todos os registros criados pelo seed têm `isDemo = true` e aparecem na interface com o selo **Demonstrativo**. O seed não cria nenhum conteúdo histórico da empresa, e sua execução é bloqueada em produção.
 
@@ -65,6 +65,21 @@ Os testes de integração usam `TEST_DATABASE_URL` (padrão: `postgresql://gvspa
 ## Primeiro acesso em produção
 
 O seed demonstrativo não deve ser usado em produção. Para criar o primeiro administrador, insira o usuário diretamente no banco com um hash bcrypt e `mustChangePassword = true`. Uma ferramenta de linha de comando para isso está prevista para a Fase 6. Os demais usuários são cadastrados pelo Portal ADM, que gera uma senha temporária exibida uma única vez.
+
+## Acesso dos colaboradores
+
+- O login é feito com **nome de usuário e senha**. O e-mail é opcional.
+- O administrador cria o usuário (ex.: `joao.silva`), e o sistema gera uma senha temporária. No primeiro acesso, o colaborador escolhe a própria senha.
+- Se alguém esquecer a senha, o administrador ou o gestor da equipe gera uma nova senha temporária.
+
+## Perfis
+
+| Perfil | Pode |
+| --- | --- |
+| Administrador geral | Tudo: cadastrar pessoas, definir perfis, desativar acessos, configurar a plataforma |
+| Gestor | Ver e **editar todos os dados dos membros da sua equipe** (cadastro, metas, feedbacks, jornada, senha temporária), exceto o perfil de acesso; não edita administradores |
+| Instrutor | **Aplicar provas e corrigir/editar notas de todas as provas de todos os cursos**, liberar resultados, autorizar novas tentativas e gerenciar os próprios cursos |
+| Colaborador | Ver apenas as próprias informações e os conteúdos liberados |
 
 ## Identidade visual
 

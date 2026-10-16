@@ -2,6 +2,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { asActor, makeUser, prisma, resetDb } from "./helpers";
 import {
   createUser,
+  resetUserPassword,
   getUserForActor,
   listUsers,
   ServiceError,
@@ -13,7 +14,8 @@ import type { UserFormInput } from "@/lib/validation";
 
 const baseInput = (over: Partial<UserFormInput> = {}): UserFormInput => ({
   name: "Nova Pessoa",
-  email: `nova-${Math.random().toString(36).slice(2)}@teste.dev`,
+  username: `nova.${Math.random().toString(36).slice(2, 10)}`,
+  email: null,
   role: "COLABORADOR",
   registration: null,
   phone: null,
@@ -75,14 +77,20 @@ describe("cadastro de colaboradores", () => {
     expect(log?.actorId).toBe(admin.id);
   });
 
-  it("recusa e-mail duplicado com mensagem no campo", async () => {
+  it("recusa nome de usuário duplicado com mensagem no campo", async () => {
     const admin = await asActor((await makeUser("ADMIN")).id);
     const input = baseInput();
     await createUser(admin, input);
     await expect(createUser(admin, { ...input, name: "Outra" })).rejects.toMatchObject({
       name: "ServiceError",
-      field: "email",
+      field: "username",
     });
+  });
+
+  it("permite cadastrar sem e-mail", async () => {
+    const admin = await asActor((await makeUser("ADMIN")).id);
+    const { id } = await createUser(admin, baseInput({ email: null }));
+    expect((await prisma.user.findUniqueOrThrow({ where: { id } })).email).toBeNull();
   });
 
   it("recusa cargo de outro departamento", async () => {
@@ -100,14 +108,14 @@ describe("cadastro de colaboradores", () => {
     const chefe = await makeUser("GESTOR");
     const sub = await makeUser("COLABORADOR", { managerId: chefe.id });
     await expect(
-      updateUser(admin, chefe.id, baseInput({ email: chefe.email, role: "GESTOR", managerId: sub.id })),
+      updateUser(admin, chefe.id, baseInput({ username: chefe.username, role: "GESTOR", managerId: sub.id })),
     ).rejects.toMatchObject({ field: "managerId" });
   });
 
   it("administrador não pode remover o próprio perfil nem se desativar", async () => {
     const admin = await makeUser("ADMIN");
     const actor = await asActor(admin.id);
-    await expect(updateUser(actor, admin.id, baseInput({ email: admin.email, role: "COLABORADOR" }))).rejects.toBeInstanceOf(
+    await expect(updateUser(actor, admin.id, baseInput({ username: admin.username, role: "COLABORADOR" }))).rejects.toBeInstanceOf(
       ServiceError,
     );
     await expect(setUserStatus(actor, admin.id, "INACTIVE")).rejects.toBeInstanceOf(ServiceError);
@@ -130,7 +138,50 @@ describe("cadastro de colaboradores", () => {
     await prisma.session.create({
       data: { tokenHash: "hash-papel", userId: colab.id, expiresAt: new Date(Date.now() + 3600_000) },
     });
-    await updateUser(admin, colab.id, baseInput({ email: colab.email, role: "GESTOR" }));
+    await updateUser(admin, colab.id, baseInput({ username: colab.username, role: "GESTOR" }));
     expect(await prisma.session.count({ where: { userId: colab.id } })).toBe(0);
+  });
+});
+
+describe("edição pelo gestor", () => {
+  async function setup() {
+    const dep = await prisma.department.create({ data: { name: "Comercial" } });
+    const gestor = await makeUser("GESTOR");
+    await prisma.department.update({ where: { id: dep.id }, data: { headId: gestor.id } });
+    const membro = await makeUser("COLABORADOR", { managerId: gestor.id });
+    const deFora = await makeUser("COLABORADOR");
+    const adminNaEquipe = await makeUser("ADMIN", { departmentId: dep.id });
+    return { gestor: await asActor(gestor.id), membro, deFora, adminNaEquipe };
+  }
+
+  it("edita os dados de um membro da equipe", async () => {
+    const { gestor, membro } = await setup();
+    await updateUser(gestor, membro.id, baseInput({ name: "Nome Editado", username: membro.username, phone: "1234" }));
+    const after = await prisma.user.findUniqueOrThrow({ where: { id: membro.id } });
+    expect(after.name).toBe("Nome Editado");
+    expect(after.phone).toBe("1234");
+  });
+
+  it("não altera o perfil de acesso, mesmo enviando outro perfil", async () => {
+    const { gestor, membro } = await setup();
+    await updateUser(gestor, membro.id, baseInput({ username: membro.username, role: "ADMIN" }));
+    expect((await prisma.user.findUniqueOrThrow({ where: { id: membro.id } })).role).toBe("COLABORADOR");
+  });
+
+  it("não edita pessoas fora da equipe nem administradores", async () => {
+    const { gestor, deFora, adminNaEquipe } = await setup();
+    await expect(updateUser(gestor, deFora.id, baseInput({ username: deFora.username }))).rejects.toBeInstanceOf(ServiceError);
+    await expect(
+      updateUser(gestor, adminNaEquipe.id, baseInput({ username: adminNaEquipe.username, role: "ADMIN" })),
+    ).rejects.toBeInstanceOf(ServiceError);
+    await expect(resetUserPassword(gestor, deFora.id)).rejects.toBeInstanceOf(ServiceError);
+  });
+
+  it("gera senha temporária para membro da equipe", async () => {
+    const { gestor, membro } = await setup();
+    const pwd = await resetUserPassword(gestor, membro.id);
+    const after = await prisma.user.findUniqueOrThrow({ where: { id: membro.id } });
+    expect(after.mustChangePassword).toBe(true);
+    expect(await verifyPassword(pwd, after.passwordHash)).toBe(true);
   });
 });

@@ -19,7 +19,7 @@ let seq = 0;
 export async function makeUser(role: Role, extra: Partial<{ managerId: string; departmentId: string }> = {}) {
   seq++;
   return prisma.user.create({
-    data: { name: `Pessoa ${seq}`, email: `p${seq}-${Date.now()}@teste.dev`, passwordHash: "x", role, ...extra },
+    data: { name: `Pessoa ${seq}`, username: `p${seq}.${Date.now()}`, passwordHash: "x", role, ...extra },
   });
 }
 
@@ -30,6 +30,7 @@ export async function asActor(id: string): Promise<CurrentUser> {
     select: {
       id: true,
       name: true,
+      username: true,
       email: true,
       role: true,
       status: true,

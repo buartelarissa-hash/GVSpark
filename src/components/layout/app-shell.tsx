@@ -13,7 +13,7 @@ import { ADMIN_NAV, COLABORADOR_NAV, filterNav, type NavGroup } from "./nav-conf
 
 export type ShellUser = {
   name: string;
-  email: string;
+  username: string;
   avatarUrl: string | null;
   roleLabel: string;
   subtitle: string;
@@ -180,7 +180,7 @@ export function AppShell({
                 >
                   <div className="px-3 py-2">
                     <p className="truncate text-sm font-semibold">{user.name}</p>
-                    <p className="truncate text-xs text-muted">{user.email}</p>
+                    <p className="truncate text-xs text-muted">Usuário: {user.username}</p>
                     <p className="mt-1 text-xs font-medium text-navy-600">{user.roleLabel}</p>
                   </div>
                   <Dropdown.Separator className="my-1 h-px bg-border" />

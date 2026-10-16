@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, KeyRound, UserCheck, UserX } from "lucide-react";
 import { requirePagePermission } from "@/server/auth/current-user";
 import { getUserForActor, userFormOptions } from "@/server/services/users";
-import { hasPermission } from "@/server/permissions/permissions";
+import { canEditUser, hasPermission } from "@/server/permissions/permissions";
 import { db } from "@/server/db";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,11 +24,14 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
   // A consulta já aplica o escopo do perfil: gestor só encontra a própria equipe.
   const user = await getUserForActor(actor, id);
   if (!user) notFound();
+  // canManage: perfil de acesso e desativação (administrador geral).
+  // canEdit: dados cadastrais e senha temporária (administrador ou gestor da equipe).
   const canManage = hasPermission(actor.role, "users.manage");
+  const canEdit = hasPermission(actor.role, "users.edit") && canEditUser(actor, user);
   const isSelf = actor.id === user.id;
 
   const [options, history] = await Promise.all([
-    canManage ? userFormOptions() : null,
+    canEdit ? userFormOptions() : null,
     hasPermission(actor.role, "audit.view")
       ? db.auditLog.findMany({
           where: { entity: "User", entityId: user.id },
@@ -48,7 +51,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
         title={user.name}
         description={[user.position?.title, user.department?.name].filter(Boolean).join(" · ") || undefined}
         actions={
-          canManage && (
+          canEdit && (
             <>
               <ConfirmAction
                 trigger={<><KeyRound /> Gerar senha temporária</>}
@@ -60,7 +63,8 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
                 hidden={{ id: user.id }}
                 onDoneMessage
               />
-              {!isSelf &&
+              {canManage &&
+                !isSelf &&
                 (user.status === "ACTIVE" ? (
                   <ConfirmAction
                     trigger={<><UserX /> Desativar acesso</>}
@@ -102,7 +106,8 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
               </div>
               <dl className="mt-6 space-y-3 text-sm">
                 {[
-                  ["E-mail", user.email],
+                  ["Usuário", user.username],
+                  ["E-mail", user.email ?? "—"],
                   ["Matrícula", user.registration ?? "—"],
                   ["Gestor", user.manager?.name ?? "—"],
                   ["Admissão", formatDate(user.admissionDate)],
@@ -144,17 +149,19 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
 
         <Card className="lg:col-span-2">
           <CardHeader>
-            <CardTitle>{canManage ? "Editar cadastro" : "Dados do colaborador"}</CardTitle>
+            <CardTitle>{canEdit ? "Editar cadastro" : "Dados do colaborador"}</CardTitle>
           </CardHeader>
           <CardContent className="p-6">
-            {canManage && options ? (
+            {canEdit && options ? (
               <UserForm
                 action={updateUserAction}
                 options={options}
                 submitLabel="Salvar alterações"
+                canEditRole={canManage}
                 defaults={{
                   id: user.id,
                   name: user.name,
+                  username: user.username,
                   email: user.email,
                   role: user.role,
                   registration: user.registration,
@@ -167,8 +174,7 @@ export default async function UserDetailPage({ params }: { params: Promise<{ id:
               />
             ) : (
               <p className="text-sm text-muted">
-                Você pode consultar os dados deste colaborador, mas apenas o administrador geral pode alterá-los.
-                Nas próximas fases, esta página reunirá treinamentos, notas liberadas e metas da equipe.
+                Você pode consultar os dados deste colaborador, mas não pode alterá-los.
               </p>
             )}
           </CardContent>

@@ -37,7 +37,8 @@ enum UserStatus {
 model User {
   id                 String     @id @default(cuid())
   name               String
-  email              String     @unique
+  username           String     @unique // login: nome de usuário (minúsculas, sem espaços)
+  email              String?    @unique // opcional
   passwordHash       String
   role               Role       @default(COLABORADOR)
   status             UserStatus @default(ACTIVE)
@@ -120,13 +121,13 @@ model Session {
 }
 
 model LoginAttempt {
-  id        String   @id @default(cuid())
-  email     String
-  ip        String?
-  success   Boolean
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  identifier String // nome de usuário informado no login
+  ip         String?
+  success    Boolean
+  createdAt  DateTime @default(now())
 
-  @@index([email, createdAt])
+  @@index([identifier, createdAt])
   @@index([ip, createdAt])
 }
 

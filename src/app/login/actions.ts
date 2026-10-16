@@ -10,35 +10,35 @@ import { homePathFor } from "@/server/permissions/permissions";
 import { fieldErrors, formToObject, loginSchema, type ActionState } from "@/lib/validation";
 import { safeInternalPath } from "@/lib/utils";
 
-const INVALID = "E-mail ou senha inválidos.";
+const INVALID = "Usuário ou senha inválidos.";
 
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const parsed = loginSchema.safeParse(formToObject(formData));
   if (!parsed.success) return { errors: fieldErrors(parsed.error) };
-  const { email, password, next } = parsed.data;
+  const { username, password, next } = parsed.data;
   const { ip } = await requestMeta();
 
-  if (await isLoginBlocked(email, ip)) {
+  if (await isLoginBlocked(username, ip)) {
     return { message: "Muitas tentativas sem sucesso. Aguarde 15 minutos e tente novamente." };
   }
 
   const user = await db.user.findUnique({
-    where: { email },
+    where: { username },
     select: { id: true, passwordHash: true, status: true, role: true, mustChangePassword: true },
   });
   if (!user) {
     await burnPasswordCheck(password);
-    await recordLoginAttempt(email, ip, false);
+    await recordLoginAttempt(username, ip, false);
     return { message: INVALID };
   }
   const valid = await verifyPassword(password, user.passwordHash);
   if (!valid || user.status !== "ACTIVE") {
-    await recordLoginAttempt(email, ip, false);
+    await recordLoginAttempt(username, ip, false);
     // Mesmo texto para usuário inativo: não revela a situação da conta.
     return { message: INVALID };
   }
 
-  await recordLoginAttempt(email, ip, true);
+  await recordLoginAttempt(username, ip, true);
   await createSession(user.id);
   await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
   await audit({ actorId: user.id, action: "auth.login", entity: "User", entityId: user.id });

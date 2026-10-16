@@ -22,8 +22,9 @@ const palette = [
 ];
 
 const SCOPED: Partial<Record<(typeof ROLES)[number], string>> = {
-  GESTOR: "Restrito à própria equipe (subordinados diretos e departamentos que chefia).",
-  INSTRUTOR: "Correções, liberações e novas tentativas restritas aos cursos sob sua responsabilidade.",
+  GESTOR:
+    "Restrito à própria equipe (subordinados diretos e departamentos que chefia). Edita todos os dados dos membros, exceto o perfil de acesso, e não edita administradores.",
+  INSTRUTOR: "Aplica provas e corrige/edita notas de todos os cursos. Gerencia apenas os cursos sob sua responsabilidade.",
 };
 
 export default async function SettingsPage() {

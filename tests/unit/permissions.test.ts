@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  canEditUser,
   canViewUser,
   hasPermission,
   homePathFor,
@@ -21,15 +22,18 @@ describe("matriz de permissões", () => {
     expect(hasPermission("COLABORADOR", "grades.view")).toBe(false);
   });
 
-  it("gestor não gerencia cadastro, cursos nem libera notas", () => {
+  it("gestor edita dados, metas e jornada da equipe, mas não cria usuários, cursos nem libera notas", () => {
     expect(hasPermission("GESTOR", "users.view")).toBe(true);
+    expect(hasPermission("GESTOR", "users.edit")).toBe(true);
+    expect(hasPermission("GESTOR", "goals.manage")).toBe(true);
+    expect(hasPermission("GESTOR", "career.manage")).toBe(true);
     expect(hasPermission("GESTOR", "users.manage")).toBe(false);
     expect(hasPermission("GESTOR", "courses.manage")).toBe(false);
     expect(hasPermission("GESTOR", "assessments.release")).toBe(false);
     expect(hasPermission("GESTOR", "retakes.authorize")).toBe(false);
   });
 
-  it("instrutor corrige e libera, mas não gerencia pessoas nem configurações", () => {
+  it("instrutor aplica provas e edita notas, mas não gerencia pessoas nem configurações", () => {
     expect(hasPermission("INSTRUTOR", "assessments.grade")).toBe(true);
     expect(hasPermission("INSTRUTOR", "assessments.release")).toBe(true);
     expect(hasPermission("INSTRUTOR", "retakes.authorize")).toBe(true);
@@ -69,6 +73,22 @@ describe("escopo de visibilidade de pessoas", () => {
 
   it("administrador vê todos", () => {
     expect(canViewUser(admin, { id: "qualquer", managerId: null, departmentId: null })).toBe(true);
+  });
+});
+
+describe("edição de dados de pessoas", () => {
+  const gestor = { id: "g", role: "GESTOR" as const, headedDepartmentIds: ["dep"] };
+  it("gestor edita membros da equipe, exceto administradores", () => {
+    expect(canEditUser(gestor, { id: "x", role: "COLABORADOR", managerId: "g", departmentId: null })).toBe(true);
+    expect(canEditUser(gestor, { id: "y", role: "INSTRUTOR", managerId: null, departmentId: "dep" })).toBe(true);
+    expect(canEditUser(gestor, { id: "z", role: "ADMIN", managerId: "g", departmentId: "dep" })).toBe(false);
+    expect(canEditUser(gestor, { id: "w", role: "COLABORADOR", managerId: "k", departmentId: "outro" })).toBe(false);
+  });
+  it("instrutor e colaborador não editam outras pessoas", () => {
+    const t = { id: "x", role: "COLABORADOR" as const, managerId: null, departmentId: null };
+    expect(canEditUser({ id: "i", role: "INSTRUTOR" }, t)).toBe(false);
+    expect(canEditUser({ id: "c", role: "COLABORADOR" }, t)).toBe(false);
+    expect(canEditUser({ id: "a", role: "ADMIN" }, t)).toBe(true);
   });
 });
 

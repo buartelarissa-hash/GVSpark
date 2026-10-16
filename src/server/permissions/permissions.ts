@@ -11,6 +11,7 @@ export const PERMISSIONS = [
   "portal.access",
   "admin.access",
   "users.view",
+  "users.edit",
   "users.manage",
   "org.manage",
   "content.manage",
@@ -36,13 +37,14 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   "portal.access": "Acessar o Portal do Colaborador",
   "admin.access": "Acessar o Portal ADM",
   "users.view": "Visualizar colaboradores",
-  "users.manage": "Cadastrar e editar colaboradores",
+  "users.edit": "Editar dados de colaboradores",
+  "users.manage": "Cadastrar colaboradores, definir perfis e desativar acessos",
   "org.manage": "Gerenciar departamentos, cargos e organograma",
   "content.manage": "Editar história, cultura e comunicados",
   "courses.manage": "Gerenciar todos os cursos",
   "courses.manageOwn": "Gerenciar cursos sob sua responsabilidade",
   "questions.manage": "Gerenciar banco de questões",
-  "assessments.grade": "Corrigir avaliações",
+  "assessments.grade": "Aplicar provas e corrigir/editar notas",
   "assessments.release": "Liberar resultados",
   "retakes.authorize": "Autorizar novas tentativas",
   "grades.view": "Consultar histórico de notas",
@@ -59,23 +61,27 @@ const ALL = [...PERMISSIONS];
 
 export const ROLE_PERMISSIONS: Record<Role, readonly Permission[]> = {
   ADMIN: ALL,
+  // Gestor: tudo restrito à própria equipe (ver visibleUsersWhere / canEditUser).
   GESTOR: [
     "portal.access",
     "admin.access",
-    "users.view", // restrito à própria equipe (ver userScope)
-    "grades.view", // restrito à própria equipe
-    "goals.manage", // restrito à própria equipe
-    "reports.view", // restrito à própria equipe
+    "users.view",
+    "users.edit", // dados cadastrais, metas, feedbacks, jornada; não altera perfil de acesso
+    "grades.view",
+    "career.manage",
+    "goals.manage",
+    "reports.view",
   ],
+  // Instrutor: aplica provas e corrige/edita notas de TODOS os cursos.
   INSTRUTOR: [
     "portal.access",
     "admin.access",
     "courses.manageOwn",
     "questions.manage",
-    "assessments.grade", // restrito aos próprios cursos
-    "assessments.release", // restrito aos próprios cursos
-    "retakes.authorize", // restrito aos próprios cursos
-    "grades.view", // restrito aos próprios cursos
+    "assessments.grade",
+    "assessments.release",
+    "retakes.authorize",
+    "grades.view",
     "inquiries.manage",
   ],
   COLABORADOR: ["portal.access"],
@@ -109,6 +115,21 @@ export function canViewUser(
     if (target.departmentId && actor.headedDepartmentIds?.includes(target.departmentId)) return true;
   }
   return false;
+}
+
+/**
+ * Quem pode editar os dados de `target`:
+ * - administrador geral: qualquer pessoa;
+ * - gestor: membros da equipe (que já passaram pelo filtro de visibilidade),
+ *   exceto administradores — e nunca o perfil de acesso (ver users.manage).
+ */
+export function canEditUser(
+  actor: { id: string; role: Role; headedDepartmentIds?: string[] },
+  target: { id: string; role: Role; managerId: string | null; departmentId: string | null },
+): boolean {
+  if (actor.role === "ADMIN") return true;
+  if (actor.role !== "GESTOR" || target.role === "ADMIN") return false;
+  return canViewUser(actor, target);
 }
 
 /**

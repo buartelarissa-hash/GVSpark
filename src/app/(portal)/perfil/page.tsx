@@ -24,7 +24,8 @@ export default async function ProfilePage() {
   });
 
   const rows: [string, string][] = [
-    ["E-mail", user.email],
+    ["Usuário", user.username],
+    ["E-mail", user.email ?? "—"],
     ["Matrícula", profile.registration ?? "—"],
     ["Telefone", profile.phone ?? "—"],
     ["Cargo", user.position?.title ?? "—"],

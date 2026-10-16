@@ -16,13 +16,18 @@ export async function createUserAction(_prev: ActionState, fd: FormData): Promis
     if (!parsed.success) return { errors: fieldErrors(parsed.error), message: "Revise os campos destacados." };
     const { id, temporaryPassword } = await createUser(actor, parsed.data);
     revalidatePath("/adm/colaboradores");
-    return { ok: true, message: "Colaborador cadastrado com sucesso.", secret: temporaryPassword, id };
+    return {
+      ok: true,
+      message: `Colaborador cadastrado. Usuário de acesso: ${parsed.data.username}`,
+      secret: temporaryPassword,
+      id,
+    };
   });
 }
 
 export async function updateUserAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const actor = await assertPermission("users.manage");
+    const actor = await assertPermission("users.edit");
     const id = idSchema.parse(fd.get("id"));
     const parsed = userFormSchema.safeParse(formToObject(fd));
     if (!parsed.success) return { errors: fieldErrors(parsed.error), message: "Revise os campos destacados." };
@@ -47,7 +52,7 @@ export async function setUserStatusAction(_prev: ActionState, fd: FormData): Pro
 
 export async function resetPasswordAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
   return runAction(async () => {
-    const actor = await assertPermission("users.manage");
+    const actor = await assertPermission("users.edit");
     const id = idSchema.parse(fd.get("id"));
     const temporaryPassword = await resetUserPassword(actor, id);
     return { ok: true, message: "Nova senha temporária gerada.", secret: temporaryPassword };

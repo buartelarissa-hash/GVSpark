@@ -65,7 +65,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
         <form className="grid gap-3 border-b border-border p-4 sm:grid-cols-2 lg:grid-cols-[1fr_auto_auto_auto_auto]" role="search">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted" aria-hidden="true" />
-            <Input name="q" defaultValue={q} placeholder="Buscar por nome, e-mail ou matrícula" className="pl-9" aria-label="Buscar" />
+            <Input name="q" defaultValue={q} placeholder="Buscar por nome, usuário, e-mail ou matrícula" className="pl-9" aria-label="Buscar" />
           </div>
           <Select name="departamento" defaultValue={sp.departamento ?? ""} aria-label="Departamento">
             <option value="">Todos os departamentos</option>
@@ -110,7 +110,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                             <span className="truncate">{u.name}</span>
                             {u.isDemo && <DemoBadge />}
                           </span>
-                          <span className="block truncate text-xs font-normal text-muted">{u.email}</span>
+                          <span className="block truncate text-xs font-normal text-muted">{u.username}</span>
                         </span>
                       </Link>
                     </TD>

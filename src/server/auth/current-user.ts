@@ -8,6 +8,7 @@ import { hasPermission, type Permission } from "@/server/permissions/permissions
 const userSelect = {
   id: true,
   name: true,
+  username: true,
   email: true,
   role: true,
   status: true,

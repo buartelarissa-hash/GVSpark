@@ -4,7 +4,7 @@ import { db } from "@/server/db";
 import { audit } from "./audit";
 import { generateTemporaryPassword, hashPassword } from "@/server/auth/password";
 import { destroyUserSessions } from "@/server/auth/session";
-import { selfChangeError, userScopeFor } from "@/server/permissions/permissions";
+import { canEditUser, selfChangeError, userScopeFor } from "@/server/permissions/permissions";
 import { parseDateInput } from "@/lib/format";
 import type { UserFormInput } from "@/lib/validation";
 import type { CurrentUser } from "@/server/auth/current-user";
@@ -54,6 +54,7 @@ export async function listUsers(actor: CurrentUser, filters: UserListFilters) {
         ? {
             OR: [
               { name: { contains: filters.q, mode: "insensitive" } },
+              { username: { contains: filters.q, mode: "insensitive" } },
               { email: { contains: filters.q, mode: "insensitive" } },
               { registration: { contains: filters.q, mode: "insensitive" } },
             ],
@@ -74,6 +75,7 @@ export async function listUsers(actor: CurrentUser, filters: UserListFilters) {
       select: {
         id: true,
         name: true,
+        username: true,
         email: true,
         role: true,
         status: true,
@@ -95,6 +97,7 @@ export async function getUserForActor(actor: CurrentUser, id: string) {
     select: {
       id: true,
       name: true,
+      username: true,
       email: true,
       role: true,
       status: true,
@@ -142,6 +145,7 @@ async function validateRelations(input: UserFormInput, selfId?: string) {
 function toUserData(input: UserFormInput) {
   return {
     name: input.name,
+    username: input.username,
     email: input.email,
     role: input.role,
     registration: input.registration,
@@ -156,6 +160,7 @@ function toUserData(input: UserFormInput) {
 function uniqueViolation(e: unknown): ServiceError | null {
   if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
     const target = String((e.meta as { target?: string[] } | undefined)?.target ?? "");
+    if (target.includes("username")) return new ServiceError("Este nome de usuário já está em uso.", "username");
     if (target.includes("email")) return new ServiceError("Já existe um usuário com este e-mail.", "email");
     if (target.includes("registration")) return new ServiceError("Matrícula já cadastrada.", "registration");
     return new ServiceError("Registro duplicado.");
@@ -186,9 +191,20 @@ export async function createUser(actor: CurrentUser, input: UserFormInput) {
   }
 }
 
+/**
+ * Carrega um usuário para edição, garantindo que `actor` possa editá-lo
+ * (administrador: qualquer um; gestor: membros da equipe que não sejam administradores).
+ */
+async function loadEditableUser(actor: CurrentUser, id: string) {
+  const target = await db.user.findFirst({ where: { AND: [{ id }, visibleUsersWhere(actor)] } });
+  if (!target || !canEditUser(actor, target)) throw new ServiceError("Colaborador não encontrado ou fora da sua equipe.");
+  return target;
+}
+
 export async function updateUser(actor: CurrentUser, id: string, input: UserFormInput) {
-  const before = await db.user.findUnique({ where: { id } });
-  if (!before) throw new ServiceError("Colaborador não encontrado.");
+  const before = await loadEditableUser(actor, id);
+  // Somente o administrador geral altera o perfil de acesso; para os demais, o perfil é mantido.
+  if (actor.role !== "ADMIN") input = { ...input, role: before.role };
   const selfErr = selfChangeError(actor.id, id, { role: input.role });
   if (selfErr) throw new ServiceError(selfErr, "role");
   await validateRelations(input, id);
@@ -224,6 +240,7 @@ export async function setUserStatus(actor: CurrentUser, id: string, status: User
 }
 
 export async function resetUserPassword(actor: CurrentUser, id: string) {
+  await loadEditableUser(actor, id);
   const temporaryPassword = generateTemporaryPassword();
   const passwordHash = await hashPassword(temporaryPassword);
   await db.$transaction(async (tx) => {

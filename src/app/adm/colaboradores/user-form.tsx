@@ -19,7 +19,8 @@ type Options = {
 export type UserFormDefaults = {
   id?: string;
   name?: string;
-  email?: string;
+  username?: string;
+  email?: string | null;
   role?: string;
   registration?: string | null;
   phone?: string | null;
@@ -35,6 +36,7 @@ export function UserForm({
   defaults = {},
   submitLabel,
   onReset,
+  canEditRole = true,
 }: {
   action: (prev: ActionState, fd: FormData) => Promise<ActionState>;
   options: Options;
@@ -42,6 +44,8 @@ export function UserForm({
   submitLabel: string;
   /** Reinicia o formulário após um cadastro bem-sucedido. */
   onReset?: () => void;
+  /** Somente o administrador geral define o perfil de acesso. */
+  canEditRole?: boolean;
 }) {
   const [state, formAction] = useActionState(action, {});
   const [departmentId, setDepartmentId] = React.useState(defaults.departmentId ?? "");
@@ -59,7 +63,7 @@ export function UserForm({
           <p className="text-xs font-medium uppercase tracking-wide text-muted">Senha temporária</p>
           <p className="mt-1 select-all font-mono text-2xl font-bold tracking-wider text-navy-900">{state.secret}</p>
           <p className="mt-2 text-xs text-muted">
-            Repasse esta senha ao colaborador por um canal seguro. Ela não será exibida novamente e deverá ser trocada no primeiro acesso.
+            Repasse o usuário e esta senha ao colaborador por um canal seguro. Ela não será exibida novamente e deverá ser trocada no primeiro acesso.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -86,8 +90,27 @@ export function UserForm({
         <Field label="Nome completo" htmlFor="name" error={e.name} required className="sm:col-span-2">
           <Input id="name" name="name" defaultValue={defaults.name} required maxLength={120} aria-invalid={!!e.name} />
         </Field>
-        <Field label="E-mail corporativo" htmlFor="email" error={e.email} required>
-          <Input id="email" name="email" type="email" defaultValue={defaults.email} required aria-invalid={!!e.email} />
+        <Field
+          label="Usuário de acesso"
+          htmlFor="username"
+          error={e.username}
+          required
+          hint="Usado para entrar no GV SPARK. Ex.: joao.silva (sem espaços e sem acentos)."
+        >
+          <Input
+            id="username"
+            name="username"
+            defaultValue={defaults.username}
+            required
+            maxLength={30}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+            aria-invalid={!!e.username}
+          />
+        </Field>
+        <Field label="E-mail (opcional)" htmlFor="email" error={e.email}>
+          <Input id="email" name="email" type="email" defaultValue={defaults.email ?? ""} aria-invalid={!!e.email} />
         </Field>
         <Field label="Telefone" htmlFor="phone" error={e.phone}>
           <Input id="phone" name="phone" defaultValue={defaults.phone ?? ""} maxLength={30} />
@@ -134,8 +157,15 @@ export function UserForm({
             ))}
           </Select>
         </Field>
-        <Field label="Perfil de acesso" htmlFor="role" error={e.role} required hint="Define o que a pessoa pode ver e fazer na plataforma.">
-          <Select id="role" name="role" defaultValue={defaults.role ?? "COLABORADOR"}>
+        <Field
+          label="Perfil de acesso"
+          htmlFor="role"
+          error={e.role}
+          required
+          hint={canEditRole ? "Define o que a pessoa pode ver e fazer na plataforma." : "Somente o administrador geral altera o perfil de acesso."}
+        >
+          {!canEditRole && <input type="hidden" name="role" value={defaults.role} />}
+          <Select id="role" name={canEditRole ? "role" : undefined} defaultValue={defaults.role ?? "COLABORADOR"} disabled={!canEditRole}>
             {ROLES.map((r) => (
               <option key={r} value={r}>{ROLE_LABELS[r]}</option>
             ))}

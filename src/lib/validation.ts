@@ -13,15 +13,27 @@ export const optionalDate = z
   .preprocess(emptyToNull, z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida").nullable().optional())
   .transform((v) => v ?? null);
 
+/** Nome de usuário: 3 a 30 caracteres, letras minúsculas, números, ponto, hífen ou sublinhado. */
+export const usernameSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .min(3, "O usuário deve ter pelo menos 3 caracteres.")
+  .max(30, "O usuário deve ter no máximo 30 caracteres.")
+  .regex(/^[a-z0-9._-]+$/, "Use apenas letras sem acento, números, ponto, hífen ou sublinhado (sem espaços).");
+
 export const loginSchema = z.object({
-  email: z.string().trim().toLowerCase().email("Informe um e-mail válido.").max(200),
+  username: z.string().trim().toLowerCase().min(1, "Informe o usuário.").max(60),
   password: z.string().min(1, "Informe a senha.").max(128),
   next: z.string().max(300).optional(),
 });
 
 export const userFormSchema = z.object({
   name: z.string().trim().min(3, "Informe o nome completo.").max(120),
-  email: z.string().trim().toLowerCase().email("Informe um e-mail válido.").max(200),
+  username: usernameSchema,
+  email: z
+    .preprocess(emptyToNull, z.string().trim().toLowerCase().email("Informe um e-mail válido.").max(200).nullable().optional())
+    .transform((v) => v ?? null),
   role: z.enum(["ADMIN", "GESTOR", "INSTRUTOR", "COLABORADOR"]),
   registration: optionalText(40),
   phone: optionalText(30),

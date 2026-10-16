@@ -58,7 +58,7 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
             <Logo variant="dark" showTagline />
           </div>
           <h2 className="text-2xl font-bold tracking-tight text-navy-900">Acesse sua conta</h2>
-          <p className="mt-1 mb-8 text-sm text-muted">Use o e-mail e a senha fornecidos pela empresa.</p>
+          <p className="mt-1 mb-8 text-sm text-muted">Entre com o usuário e a senha fornecidos pela empresa.</p>
           <LoginForm next={next} />
         </div>
       </section>

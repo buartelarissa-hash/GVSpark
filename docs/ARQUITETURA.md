@@ -13,12 +13,12 @@ O repositório estava vazio (sem commits nem código). Não havia estrutura a pr
 | Ícones | Lucide | Sem emojis |
 | Fonte | Inter (self-hosted via `@fontsource-variable/inter`) | Sem dependência do Google Fonts no build |
 | Banco | PostgreSQL 16 + Prisma 6 | Migrations versionadas em `prisma/migrations` |
-| Autenticação | Própria: senha com bcrypt (custo 12) + sessão em banco | Token aleatório de 256 bits no cookie `httpOnly`; só o hash SHA-256 fica no banco |
+| Autenticação | Própria: **nome de usuário** + senha com bcrypt (custo 12) + sessão em banco (e-mail opcional) | Token aleatório de 256 bits no cookie `httpOnly`; só o hash SHA-256 fica no banco |
 | Validação | Zod | Toda entrada de formulário é validada no servidor |
 | Testes | Vitest (unitário + integração com banco de teste) | |
 | Previstos | TipTap (Fase 3), armazenamento S3-compatível com driver local (Fase 3), Recharts (Fase 4), geração de PDF (Fase 4) | Nenhum serviço pago |
 
-**Por que autenticação própria e não Auth.js?** O login é só por e-mail/senha corporativos, sem provedores externos. Sessões em banco permitem revogar acesso na hora (desativação, troca de papel, reset de senha), o que a regra de permissões exige. Se a empresa adotar SSO (Microsoft/Google) no futuro, dá para adicionar um provedor OIDC sem mudar o modelo de sessão.
+**Por que autenticação própria e não Auth.js?** O login é só por usuário e senha (decisão da empresa: sem e-mail obrigatório), sem provedores externos. Sessões em banco permitem revogar acesso na hora (desativação, troca de papel, reset de senha), o que a regra de permissões exige. Se a empresa adotar SSO (Microsoft/Google) no futuro, dá para adicionar um provedor OIDC sem mudar o modelo de sessão.
 
 ## 3. Estrutura de pastas
 
@@ -63,9 +63,10 @@ Separação de responsabilidades: **páginas e componentes** só apresentam; **s
 - A matriz de permissões fica em `src/server/permissions/permissions.ts` e é aplicada **no servidor**:
   - Layouts e páginas: `requireUser()`, `requirePagePermission()`.
   - Server actions: `assertPermission()`, que lança erro e impede a execução.
+  - Edição: `canEditUser()`. O gestor edita todos os dados dos membros da equipe, exceto o perfil de acesso, e não edita administradores. O instrutor corrige, edita, libera notas e autoriza novas tentativas em **todos** os cursos.
   - Consultas: `visibleUsersWhere()` restringe os dados no próprio SQL. O gestor só enxerga a si mesmo, os subordinados diretos e os membros dos departamentos que chefia; o colaborador só enxerga a si mesmo. Trocar o ID na URL não dá acesso a outro registro (o resultado é 404).
 - Sessão: expiração absoluta (12 h por padrão), revogada ao desativar o usuário, ao mudar o papel e ao gerar senha temporária.
-- Login: mensagem genérica (não revela se o e-mail existe ou se a conta está inativa), tempo de resposta equalizado, bloqueio após 5 falhas por e-mail ou 20 por IP em 15 minutos.
+- Login: mensagem genérica (não revela se o usuário existe ou se a conta está inativa), tempo de resposta equalizado, bloqueio após 5 falhas por usuário ou 20 por IP em 15 minutos.
 - Senhas: mínimo de 8 caracteres com letras e números; senhas temporárias exigem troca no primeiro acesso.
 - `?next=` só aceita caminhos internos (sem open redirect); um colaborador nunca é redirecionado para `/adm`.
 - Auditoria: tabela `AuditLog` (quem, o quê, quando, IP) para login/logout, cadastro, alterações e status.

@@ -8,7 +8,7 @@ export function shellProps(user: CurrentUser): { user: ShellUser; permissions: s
   return {
     user: {
       name: user.name,
-      email: user.email,
+      username: user.username,
       avatarUrl: user.avatarUrl,
       roleLabel: ROLE_LABELS[user.role],
       subtitle: user.position?.title ?? ROLE_LABELS[user.role],

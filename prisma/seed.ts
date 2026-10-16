@@ -53,27 +53,27 @@ async function main() {
   const users: {
     key: string;
     name: string;
-    email: string;
+    username: string;
     role: Role;
     position: string;
     department: string;
     admission: string;
     manager?: string;
   }[] = [
-    { key: "admin", name: "Administrador Demonstrativo", email: "admin@gvspark.dev", role: "ADMIN", position: "Diretor(a)", department: "Diretoria", admission: "2019-03-11" },
-    { key: "gestor", name: "Gestora Demonstrativa", email: "gestor@gvspark.dev", role: "GESTOR", position: "Gerente comercial", department: "Comercial", admission: "2021-06-01", manager: "admin" },
-    { key: "instrutor", name: "Instrutor Demonstrativo", email: "instrutor@gvspark.dev", role: "INSTRUTOR", position: "Analista de treinamento", department: "Recursos Humanos", admission: "2022-02-14", manager: "admin" },
-    { key: "colaborador", name: "João Demonstrativo", email: "colaborador@gvspark.dev", role: "COLABORADOR", position: "Vendedor(a) interno(a)", department: "Comercial", admission: "2025-08-04", manager: "gestor" },
-    { key: "colaborador2", name: "Maria Demonstrativa", email: "colaborador2@gvspark.dev", role: "COLABORADOR", position: "Conferente", department: "Logística", admission: "2024-01-15", manager: "admin" },
+    { key: "admin", name: "Administrador Demonstrativo", username: "admin", role: "ADMIN", position: "Diretor(a)", department: "Diretoria", admission: "2019-03-11" },
+    { key: "gestor", name: "Gestora Demonstrativa", username: "gestor", role: "GESTOR", position: "Gerente comercial", department: "Comercial", admission: "2021-06-01", manager: "admin" },
+    { key: "instrutor", name: "Instrutor Demonstrativo", username: "instrutor", role: "INSTRUTOR", position: "Analista de treinamento", department: "Recursos Humanos", admission: "2022-02-14", manager: "admin" },
+    { key: "colaborador", name: "João Demonstrativo", username: "colaborador", role: "COLABORADOR", position: "Vendedor(a) interno(a)", department: "Comercial", admission: "2025-08-04", manager: "gestor" },
+    { key: "colaborador2", name: "Maria Demonstrativa", username: "colaborador2", role: "COLABORADOR", position: "Conferente", department: "Logística", admission: "2024-01-15", manager: "admin" },
   ];
   const ids: Record<string, string> = {};
   for (const u of users) {
     const row = await db.user.upsert({
-      where: { email: u.email },
+      where: { username: u.username },
       update: {},
       create: {
         name: u.name,
-        email: u.email,
+        username: u.username,
         role: u.role,
         passwordHash,
         positionId: pos[u.position],
@@ -104,7 +104,7 @@ async function main() {
 
   console.log("Seed demonstrativo concluído.");
   console.log(`Usuários (senha ${DEMO_PASSWORD}):`);
-  for (const u of users) console.log(`  ${u.role.padEnd(12)} ${u.email}`);
+  for (const u of users) console.log(`  ${u.role.padEnd(12)} ${u.username}`);
 }
 
 main()
